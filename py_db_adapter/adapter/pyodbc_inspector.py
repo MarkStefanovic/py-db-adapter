@@ -7,7 +7,6 @@ ref: see columns section of https://code.google.com/archive/p/pyodbc/wikis/Curso
 from __future__ import annotations
 
 import dataclasses
-import pprint
 import typing
 
 import pydantic
@@ -110,31 +109,31 @@ def inspect_pyodbc_table(
 @pydantic.dataclasses.dataclass(frozen=True)
 class PyodbcColumn:
     auto_increment: int
-    base_typeid: int
-    char_octet_length: int
+    base_typeid: typing.Optional[int]
+    char_octet_length: typing.Optional[int]
     column_def: typing.Optional[str]
     column_name: str
     data_type: int
     display_size: int
     field_type: int
     is_nullable: typing.Optional[int]
-    length: int
+    length: typing.Optional[int]
     nullable: int
     ordinal_position: int
-    physical_number: int
-    precision: int
+    physical_number: typing.Optional[int]
+    precision: typing.Optional[int]
     radix: typing.Optional[int]
     remarks: str
     scale: typing.Optional[int]
     sql_data_type: int
     sql_datetime_sub: typing.Optional[int]
-    table_info: int
-    table_oid: int
+    table_info: typing.Optional[int]
+    table_oid: typing.Optional[int]
     table_name: str
     table_owner: str
     table_qualifier: str
     type_name: str
-    typmod: int
+    typmod: typing.Optional[int]
 
     @property
     def domain_data_type(self) -> domain.DataType:
@@ -177,7 +176,7 @@ class PyodbcColumn:
             return True
         else:
             raise ValueError(
-                f"col.nullable should have been 0 or 1, but got {self.nullable}."
+                f"auto_increment should have been 0 or 1, but got {self.auto_increment!r}."
             )
 
     @property
@@ -188,7 +187,7 @@ class PyodbcColumn:
             return True
         else:
             raise ValueError(
-                f"col.nullable should have been 0 or 1, but got {self.nullable}."
+                f"nullable should have been 0 or 1, but got {self.nullable!r}."
             )
 
     @property
@@ -253,35 +252,47 @@ class PyodbcPrimaryKeys:
 def _inspect_cols(
     con: pyodbc.Connection, table_name: str, schema_name: typing.Optional[str]
 ) -> typing.List[PyodbcColumn]:
+    def handle_is_nullable(is_nullable: typing.Union[int, str]):
+        if isinstance(is_nullable, str):
+            if is_nullable == "YES":
+                return True
+            else:
+                return False
+        else:
+            if is_nullable == 1:
+                return True
+            else:
+                return False
+
     with con.cursor() as cur:
         return [
             PyodbcColumn(
-                auto_increment=col.auto_increment,
-                base_typeid=getattr(col, "base typeid"),
+                auto_increment=col.auto_increment if hasattr(col, "auto_increment") else 0,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                base_typeid=getattr(col, "base typeid") if hasattr(col, "base typeid") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
                 char_octet_length=col.char_octet_length,
                 column_def=col.column_def,
                 column_name=col.column_name,
                 data_type=col.data_type,
-                display_size=col.display_size,
-                field_type=col.field_type,
-                is_nullable=col.is_nullable,
-                length=col.length,
+                display_size=col.display_size if hasattr(col, "display_size") else col.column_size,  # Hortonworks Hive ODBC Driver uses column_size
+                field_type=col.field_type if hasattr(col, "field_type") else col.user_data_type,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                is_nullable=handle_is_nullable(col.is_nullable),
+                length=col.length if hasattr(col, "length") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
                 nullable=col.nullable,
                 ordinal_position=col.ordinal_position,
-                physical_number=getattr(col, "physical number"),
-                precision=col.precision,
-                radix=col.radix,
+                physical_number=getattr(col, "physical number") if hasattr(col, "physical number") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                precision=col.precision if hasattr(col, "precision") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                radix=col.radix if hasattr(col, "radix") else col.num_prec_radix,  # Hortonworks Hive ODBC Driver uses num_prec_radix
                 remarks=col.remarks,
-                scale=col.scale,
+                scale=col.scale if hasattr(col, "scale") else None,
                 sql_data_type=col.sql_data_type,
                 sql_datetime_sub=col.sql_datetime_sub,
-                table_info=getattr(col, "table info"),
-                table_oid=getattr(col, "table oid"),
+                table_info=getattr(col, "table info") if hasattr(col, "table info") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                table_oid=getattr(col, "table oid") if hasattr(col, "table oid") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
                 table_name=col.table_name,
-                table_owner=col.table_owner,
-                table_qualifier=col.table_qualifier,
+                table_owner=col.table_owner if hasattr(col, "table_owner") else col.table_schem,
+                table_qualifier=col.table_qualifier if hasattr(col, "table_qualifier") else col.table_cat,
                 type_name=col.type_name,
-                typmod=col.typmod,
+                typmod=col.typmod if hasattr(col, "typmod") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
             )
             for col in cur.columns(table_name, schema=schema_name)
         ]
@@ -311,19 +322,3 @@ def table_exists(con: pyodbc.Connection, table_name: str, schema_name: str) -> b
                 table=table_name, schema=schema_name, tableType="TABLE"
             ).fetchone()
         )
-
-
-if __name__ == "__main__":
-    con_str = conn_str = (
-        "DRIVER={PostgreSQL Unicode(x64)};"
-        "DATABASE=dummy;"
-        "UID=marks;"
-        "PWD=bumblebee;"
-        "SERVER=localhost;"
-        "PORT=5432;"
-    )
-    schema = "hr"
-    table = "employee"
-    with pyodbc.connect(con_str) as con:
-        tbl = inspect_pyodbc_table(con=con, table_name=table, schema_name=schema)
-        pprint.pprint(tbl)

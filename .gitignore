@@ -143,4 +143,5 @@ cython_debug/
 scripts
 poetry.lock
 .sqlite
-*_scratch.py
+*scratch.py
+Pipfile.lock
