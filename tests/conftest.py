@@ -27,7 +27,7 @@ def pyodbc_postgres_con() -> pyodbc.Connection:
 def sql_adapter(
     pyodbc_postgres_con: pyodbc.Connection,
 ) -> adapter.PostgreSQLTableAdapter:
-    table = adapter.inspect_pyodbc_table(
+    table = adapter.inspect_table(
         con=pyodbc_postgres_con,
         table_name="employee",
         schema_name="hr",

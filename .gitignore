@@ -145,3 +145,4 @@ poetry.lock
 .sqlite
 *scratch.py
 Pipfile.lock
+cache

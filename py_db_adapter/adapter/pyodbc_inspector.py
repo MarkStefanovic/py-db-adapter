@@ -7,6 +7,8 @@ ref: see columns section of https://code.google.com/archive/p/pyodbc/wikis/Curso
 from __future__ import annotations
 
 import dataclasses
+import pathlib
+import pickle
 import typing
 
 import pydantic
@@ -15,16 +17,22 @@ import pyodbc
 from py_db_adapter import domain
 from py_db_adapter.domain import exceptions
 
-__all__ = ("inspect_pyodbc_table", "table_exists",)
+__all__ = (
+    "inspect_table",
+    "inspect_table_and_cache",
+    "table_exists",
+)
 
 
-def inspect_pyodbc_table(
+def inspect_table(
     con: pyodbc.Connection,
     table_name: str,
     schema_name: typing.Optional[str] = None,
 ) -> domain.Table:
     if not table_exists(con=con, table_name=table_name, schema_name=schema_name):
-        raise exceptions.TableDoesNotExist(table_name=table_name, schema_name=schema_name)
+        raise exceptions.TableDoesNotExist(
+            table_name=table_name, schema_name=schema_name
+        )
 
     domain_cols = []
     pyodbc_cols = _inspect_cols(con=con, table_name=table_name, schema_name=schema_name)
@@ -93,9 +101,7 @@ def inspect_pyodbc_table(
                 max_length=col.length,
             )
         else:
-            raise ValueError(
-                f"Unrecognized domain_data_type: {col.domain_data_type!r}"
-            )
+            raise ValueError(f"Unrecognized domain_data_type: {col.domain_data_type!r}")
 
         domain_cols.append(domain_col)
 
@@ -267,32 +273,58 @@ def _inspect_cols(
     with con.cursor() as cur:
         return [
             PyodbcColumn(
-                auto_increment=col.auto_increment if hasattr(col, "auto_increment") else 0,  # Hortonworks Hive ODBC Driver results don't include this attribute
-                base_typeid=getattr(col, "base typeid") if hasattr(col, "base typeid") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                auto_increment=col.auto_increment
+                if hasattr(col, "auto_increment")
+                else 0,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                base_typeid=getattr(col, "base typeid")
+                if hasattr(col, "base typeid")
+                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
                 char_octet_length=col.char_octet_length,
                 column_def=col.column_def,
                 column_name=col.column_name,
                 data_type=col.data_type,
-                display_size=col.display_size if hasattr(col, "display_size") else col.column_size,  # Hortonworks Hive ODBC Driver uses column_size
-                field_type=col.field_type if hasattr(col, "field_type") else col.user_data_type,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                display_size=col.display_size
+                if hasattr(col, "display_size")
+                else col.column_size,  # Hortonworks Hive ODBC Driver uses column_size
+                field_type=col.field_type
+                if hasattr(col, "field_type")
+                else col.user_data_type,  # Hortonworks Hive ODBC Driver results don't include this attribute
                 is_nullable=handle_is_nullable(col.is_nullable),
-                length=col.length if hasattr(col, "length") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                length=col.length
+                if hasattr(col, "length")
+                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
                 nullable=col.nullable,
                 ordinal_position=col.ordinal_position,
-                physical_number=getattr(col, "physical number") if hasattr(col, "physical number") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
-                precision=col.precision if hasattr(col, "precision") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
-                radix=col.radix if hasattr(col, "radix") else col.num_prec_radix,  # Hortonworks Hive ODBC Driver uses num_prec_radix
+                physical_number=getattr(col, "physical number")
+                if hasattr(col, "physical number")
+                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                precision=col.precision
+                if hasattr(col, "precision")
+                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                radix=col.radix
+                if hasattr(col, "radix")
+                else col.num_prec_radix,  # Hortonworks Hive ODBC Driver uses num_prec_radix
                 remarks=col.remarks,
                 scale=col.scale if hasattr(col, "scale") else None,
                 sql_data_type=col.sql_data_type,
                 sql_datetime_sub=col.sql_datetime_sub,
-                table_info=getattr(col, "table info") if hasattr(col, "table info") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
-                table_oid=getattr(col, "table oid") if hasattr(col, "table oid") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                table_info=getattr(col, "table info")
+                if hasattr(col, "table info")
+                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                table_oid=getattr(col, "table oid")
+                if hasattr(col, "table oid")
+                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
                 table_name=col.table_name,
-                table_owner=col.table_owner if hasattr(col, "table_owner") else col.table_schem,
-                table_qualifier=col.table_qualifier if hasattr(col, "table_qualifier") else col.table_cat,
+                table_owner=col.table_owner
+                if hasattr(col, "table_owner")
+                else col.table_schem,
+                table_qualifier=col.table_qualifier
+                if hasattr(col, "table_qualifier")
+                else col.table_cat,
                 type_name=col.type_name,
-                typmod=col.typmod if hasattr(col, "typmod") else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                typmod=col.typmod
+                if hasattr(col, "typmod")
+                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
             )
             for col in cur.columns(table_name, schema=schema_name)
         ]
@@ -322,3 +354,22 @@ def table_exists(con: pyodbc.Connection, table_name: str, schema_name: str) -> b
                 table=table_name, schema=schema_name, tableType="TABLE"
             ).fetchone()
         )
+
+
+def inspect_table_and_cache(
+    cache_dir: pathlib.Path,
+    con: pyodbc.Connection,
+    table_name: str,
+    schema_name: typing.Optional[str] = None,
+):
+    fp = cache_dir / f"{schema_name}.{table_name}.p"
+    if fp.exists():
+        table = pickle.load(open(file=fp, mode="rb"))
+    else:
+        table = inspect_table(
+            con=con,
+            table_name=table_name,
+            schema_name=schema_name,
+        )
+        pickle.dump(table, open(fp, "wb"))
+    return table

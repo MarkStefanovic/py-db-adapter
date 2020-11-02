@@ -8,7 +8,7 @@ from py_db_adapter import domain, adapter
 def test_postgres_sql_table_adapter_columns_sql_mapping(
     pyodbc_postgres_con: pyodbc.Connection,
 ) -> None:
-    table = adapter.inspect_pyodbc_table(
+    table = adapter.inspect_table(
         con=pyodbc_postgres_con,
         table_name="employee",
         schema_name="hr",
