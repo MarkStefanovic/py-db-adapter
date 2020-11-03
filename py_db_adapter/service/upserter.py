@@ -14,6 +14,10 @@ def chunk_items(
     return [items[i : i + n] for i in range(0, len(items), n)]
 
 
+# def delete_rows(pk_values: typing.List[typing.Tuple[typing.Any, ...]]) -> int:
+
+
+
 def get_keys(
     *,
     sql_adapter: adapter.SqlTableAdapter,
@@ -108,3 +112,18 @@ def get_changes(
         src_rows=src_rows,
         dest_rows=dest_rows,
     )
+
+
+def insert_rows(
+    *,
+    sql_adapter: adapter.SqlTableAdapter,
+    con: pyodbc.Connection,
+    rows: typing.List[typing.Dict[str, typing.Any]],
+    fast_executemany: bool = True
+) -> int:
+    with con.cursor() as cur:
+        cur.fast_executemany = fast_executemany
+        row_values = [tuple(v for k, v in sorted(row.items())) for row in rows]
+        sql = sql_generator.insert_dummies(sql_adapter)
+        cur.executemany(sql, row_values)
+        return len(rows)

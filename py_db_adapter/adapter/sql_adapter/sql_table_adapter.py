@@ -132,6 +132,10 @@ class SqlTableAdapter(abc.ABC):
         return self._max_float_literal_decimal_places or 5
 
     @property
+    def primary_key_column_sql_adapters(self) -> typing.List[sql_column_adapter.ColumnSqlAdapter[sql_column_adapter.D]]:
+        return [col for col in self.column_sql_adapters if col.column_metadata.primary_key]
+
+    @property
     def row_count(self) -> str:
         return f"SELECT COUNT(*) AS row_count FROM {self.full_table_name}"
 
