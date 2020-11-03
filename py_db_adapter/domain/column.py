@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import datetime
 import decimal
@@ -58,6 +60,11 @@ class Column(abc.ABC):
     @property
     def primary_key(self) -> bool:
         return self._primary_key
+
+    @primary_key.setter
+    def primary_key(self, is_primary_key: bool) -> None:
+        """In some cases, a table does not have a primary key and we have to assign it one after the fact"""
+        self._primary_key = is_primary_key
 
     @property
     @abc.abstractmethod

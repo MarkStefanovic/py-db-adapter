@@ -28,6 +28,7 @@ def inspect_table(
     con: pyodbc.Connection,
     table_name: str,
     schema_name: typing.Optional[str] = None,
+    custom_pk_cols: typing.Optional[typing.Iterable[str]] = None,
 ) -> domain.Table:
     if not table_exists(con=con, table_name=table_name, schema_name=schema_name):
         raise exceptions.TableDoesNotExist(
@@ -105,11 +106,23 @@ def inspect_table(
 
         domain_cols.append(domain_col)
 
-    return domain.Table(
-        schema_name=schema_name,
-        table_name=table_name,
-        columns=domain_cols,
-    )
+    if custom_pk_cols:
+        col_names = {col.column_name for col in domain_cols}
+        missing_pk_cols = {col for col in pk_cols if col not in col_names}
+        if missing_pk_cols:
+            raise exceptions.InvalidCustomPrimaryKey(sorted(missing_pk_cols))
+
+    if custom_pk_cols or any(col for col in domain_cols if col.primary_key):
+        return domain.Table(
+            schema_name=schema_name,
+            table_name=table_name,
+            columns=domain_cols,
+            custom_pk_cols=custom_pk_cols,
+        )
+    else:
+        raise exceptions.MissingPrimaryKey(
+            schema_name=schema_name, table_name=table_name
+        )
 
 
 @pydantic.dataclasses.dataclass(frozen=True)
@@ -262,8 +275,12 @@ def _inspect_cols(
         if isinstance(is_nullable, str):
             if is_nullable == "YES":
                 return True
-            else:
+            elif is_nullable == "NO":
                 return False
+            else:
+                raise ValueError(
+                    f"Expected is_nullable to be either 'YES' or 'NO', but got {is_nullable!r}."
+                )
         else:
             if is_nullable == 1:
                 return True
@@ -271,60 +288,73 @@ def _inspect_cols(
                 return False
 
     with con.cursor() as cur:
+        # Hortonworks Hive ODBC Driver:
+        #    doesn't include the following attributes:
+        #       auto_increment
+        #       base_typeid
+        #       length
+        #       physical number
+        #       precision
+        #       scale
+        #       table info
+        #       table oid
+        #       typmod
+        #    uses the following attribute names:
+        #       column_size instead of display_size
+        #       user_data_type instead of field_type
+        #       num_prec_radix instead of radix
         return [
             PyodbcColumn(
-                auto_increment=col.auto_increment
-                if hasattr(col, "auto_increment")
-                else 0,  # Hortonworks Hive ODBC Driver results don't include this attribute
-                base_typeid=getattr(col, "base typeid")
-                if hasattr(col, "base typeid")
-                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                auto_increment=(
+                    col.auto_increment if hasattr(col, "auto_increment") else 0
+                ),
+                base_typeid=(
+                    getattr(col, "base typeid") if hasattr(col, "base typeid") else None
+                ),
                 char_octet_length=col.char_octet_length,
                 column_def=col.column_def,
                 column_name=col.column_name,
                 data_type=col.data_type,
-                display_size=col.display_size
-                if hasattr(col, "display_size")
-                else col.column_size,  # Hortonworks Hive ODBC Driver uses column_size
-                field_type=col.field_type
-                if hasattr(col, "field_type")
-                else col.user_data_type,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                display_size=(
+                    col.display_size
+                    if hasattr(col, "display_size")
+                    else col.column_size
+                ),
+                field_type=(
+                    col.field_type if hasattr(col, "field_type") else col.user_data_type
+                ),
                 is_nullable=handle_is_nullable(col.is_nullable),
-                length=col.length
-                if hasattr(col, "length")
-                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                length=(col.length if hasattr(col, "length") else None),
                 nullable=col.nullable,
                 ordinal_position=col.ordinal_position,
-                physical_number=getattr(col, "physical number")
-                if hasattr(col, "physical number")
-                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
-                precision=col.precision
-                if hasattr(col, "precision")
-                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
-                radix=col.radix
-                if hasattr(col, "radix")
-                else col.num_prec_radix,  # Hortonworks Hive ODBC Driver uses num_prec_radix
+                physical_number=(
+                    getattr(col, "physical number")
+                    if hasattr(col, "physical number")
+                    else None
+                ),
+                precision=(col.precision if hasattr(col, "precision") else None),
+                radix=(col.radix if hasattr(col, "radix") else col.num_prec_radix),
                 remarks=col.remarks,
-                scale=col.scale if hasattr(col, "scale") else None,
+                scale=(col.scale if hasattr(col, "scale") else None),
                 sql_data_type=col.sql_data_type,
                 sql_datetime_sub=col.sql_datetime_sub,
-                table_info=getattr(col, "table info")
-                if hasattr(col, "table info")
-                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
-                table_oid=getattr(col, "table oid")
-                if hasattr(col, "table oid")
-                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                table_info=(
+                    getattr(col, "table info") if hasattr(col, "table info") else None
+                ),
+                table_oid=(
+                    getattr(col, "table oid") if hasattr(col, "table oid") else None
+                ),
                 table_name=col.table_name,
-                table_owner=col.table_owner
-                if hasattr(col, "table_owner")
-                else col.table_schem,
-                table_qualifier=col.table_qualifier
-                if hasattr(col, "table_qualifier")
-                else col.table_cat,
+                table_owner=(
+                    col.table_owner if hasattr(col, "table_owner") else col.table_schem
+                ),
+                table_qualifier=(
+                    col.table_qualifier
+                    if hasattr(col, "table_qualifier")
+                    else col.table_cat
+                ),
                 type_name=col.type_name,
-                typmod=col.typmod
-                if hasattr(col, "typmod")
-                else None,  # Hortonworks Hive ODBC Driver results don't include this attribute
+                typmod=(col.typmod if hasattr(col, "typmod") else None),
             )
             for col in cur.columns(table_name, schema=schema_name)
         ]
@@ -361,6 +391,7 @@ def inspect_table_and_cache(
     con: pyodbc.Connection,
     table_name: str,
     schema_name: typing.Optional[str] = None,
+    custom_pk_cols: typing.Optional[typing.Iterable[str]] = None,
 ):
     fp = cache_dir / f"{schema_name}.{table_name}.p"
     if fp.exists():
@@ -370,6 +401,7 @@ def inspect_table_and_cache(
             con=con,
             table_name=table_name,
             schema_name=schema_name,
+            custom_pk_cols=custom_pk_cols,
         )
         pickle.dump(table, open(fp, "wb"))
     return table

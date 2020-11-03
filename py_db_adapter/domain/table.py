@@ -12,6 +12,7 @@ class Table:
         schema_name: typing.Optional[str],
         table_name: str,
         columns: typing.Iterable[column.Column],
+        custom_pk_cols: typing.Optional[typing.Iterable[str]] = None,
     ):
         if not isinstance(schema_name, str):
             raise ValueError(
@@ -24,9 +25,18 @@ class Table:
                 f"columns must be a sequence of column.Column, but got {columns!r}."
             )
 
+        if custom_pk_cols:
+            cols = []
+            for col in columns:
+                if col.column_name in custom_pk_cols:
+                    col.primary_key = True
+                cols.append(col)
+            self._columns = set(cols)
+        else:
+            self._columns = set(columns)
+
         self._schema_name = schema_name
         self._table_name = table_name
-        self._columns = set(columns)
 
     @property
     def columns(self) -> typing.Set[column.Column]:
