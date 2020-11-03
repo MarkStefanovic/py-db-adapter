@@ -76,7 +76,7 @@ class HiveSQLTableAdapter(sql_table_adapter.SqlTableAdapter):
         col_csv = ", ".join(
             col.definition
             for col in sorted(
-                self.column_sql_adapters, key=lambda c: c.column_metadata.column_name
+                self.column_sql_adapters, key=lambda c: c.column_metadata.column_name  # type: ignore
             )
         )
         return sql_formatter.standardize_sql(

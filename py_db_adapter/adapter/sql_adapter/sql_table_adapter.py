@@ -25,7 +25,7 @@ class SqlTableAdapter(abc.ABC):
         self._table = table
         self._max_float_literal_decimal_places = max_float_literal_decimal_places
 
-        self._column_sql_generators: typing.Optional[typing.List[domain.Column]] = None
+        self._column_sql_adapters: typing.Optional[typing.List[domain.Column]] = None
 
     @abc.abstractmethod
     def create_boolean_column_sql_adapter(
@@ -36,32 +36,32 @@ class SqlTableAdapter(abc.ABC):
     @property
     def column_sql_adapters(
         self,
-    ) -> typing.Iterable[sql_column_adapter.ColumnSqlAdapter[sql_column_adapter.D]]:
-        if self._column_sql_generators is None:
+    ) -> typing.List[sql_column_adapter.ColumnSqlAdapter[sql_column_adapter.D]]:
+        if self._column_sql_adapters is None:
             col_adapters = []
             for col in self._table.columns:
                 if isinstance(col, domain.BooleanColumn):
                     adapter = self.create_boolean_column_sql_adapter(col)
                 elif isinstance(col, domain.DateColumn):
-                    adapter = self.create_date_column_sql_adapter(col)
+                    adapter = self.create_date_column_sql_adapter(col)  # type: ignore
                 elif isinstance(col, domain.DateTimeColumn):
-                    adapter = self.create_datetime_column_sql_adapter(col)
+                    adapter = self.create_datetime_column_sql_adapter(col)  # type: ignore
                 elif isinstance(col, domain.DecimalColumn):
-                    adapter = self.create_decimal_column_sql_adapter(col)
+                    adapter = self.create_decimal_column_sql_adapter(col)  # type: ignore
                 elif isinstance(col, domain.FloatColumn):
-                    adapter = self.create_float_column_sql_adapter(col)
+                    adapter = self.create_float_column_sql_adapter(col)  # type: ignore
                 elif isinstance(col, domain.IntegerColumn):
-                    adapter = self.create_integer_column_sql_adapter(col)
+                    adapter = self.create_integer_column_sql_adapter(col)  # type: ignore
                 elif isinstance(col, domain.TextColumn):
-                    adapter = self.create_text_column_sql_adapter(col)
+                    adapter = self.create_text_column_sql_adapter(col)  # type: ignore
                 else:
                     raise ValueError(f"Unrecognized col.data_type: {col.data_type!r}")
                 col_adapters.append(adapter)
 
-            self._column_sql_generators = sorted(
-                col_adapters, key=lambda c: c.column_metadata.column_name
+            self._column_sql_adapters = sorted(
+                col_adapters, key=lambda c: c.column_metadata.column_name  # type: ignore
             )
-        return self._column_sql_generators
+        return self._column_sql_adapters  # type: ignore
 
     @abc.abstractmethod
     def create_date_column_sql_adapter(
@@ -129,7 +129,7 @@ class SqlTableAdapter(abc.ABC):
 
     @property
     def max_float_literal_decimal_places(self) -> int:
-        return self._max_float_literal_decimal_places
+        return self._max_float_literal_decimal_places or 5
 
     @property
     def row_count(self) -> str:

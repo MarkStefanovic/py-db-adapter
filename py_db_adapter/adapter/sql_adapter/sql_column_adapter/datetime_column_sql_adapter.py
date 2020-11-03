@@ -14,7 +14,7 @@ __all__ = (
 
 
 class DateTimeColumnSqlAdapter(
-    column_sql_adapter.ColumnSqlAdapter[typing.Type[datetime.datetime]], abc.ABC
+    column_sql_adapter.ColumnSqlAdapter[datetime.datetime], abc.ABC
 ):
     def __init__(
         self, *, column: domain.DateTimeColumn, wrapper: typing.Callable[[str], str]

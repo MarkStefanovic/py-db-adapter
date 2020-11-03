@@ -11,12 +11,34 @@ from sqlalchemy.engine import reflection
 from py_db_adapter import domain
 
 __all__ = (
-    "inspect_table",
-    "table_exists",
+    "sqlalchemy_inspect_table",
+    "sqlalchemy_inspect_table_and_cache",
+    "sqlalchemy_table_exists",
 )
 
 
-def inspect_table(
+def sqlalchemy_inspect_table_and_cache(
+    cache_dir: pathlib.Path,
+    engine: sa.engine.Engine,
+    table_name: str,
+    schema_name: typing.Optional[str] = None,
+    inspector: typing.Optional[reflection.Inspector] = None,
+) -> domain.Table:
+    fp = cache_dir / f"{schema_name}.{table_name}.p"
+    if fp.exists():
+        table = pickle.load(open(file=fp, mode="rb"))
+    else:
+        table = sqlalchemy_inspect_table(
+            engine=engine,
+            table_name=table_name,
+            schema_name=schema_name,
+            inspector=inspector,
+        )
+        pickle.dump(table, open(fp, "wb"))
+    return table
+
+
+def sqlalchemy_inspect_table(
     engine: sa.engine.Engine,
     table_name: str,
     schema_name: typing.Optional[str] = None,
@@ -37,7 +59,7 @@ def inspect_table(
         autoincrement = column["autoincrement"] is not None
 
         if dtype.python_type is bool:
-            domain_col = domain.BooleanColumn(
+            domain_col: domain.Column = domain.BooleanColumn(
                 schema_name=schema_name,
                 table_name=table_name,
                 column_name=column_name,
@@ -117,30 +139,9 @@ def inspect_table(
     )
 
 
-def table_exists(
+def sqlalchemy_table_exists(
     engine: sa.engine.Engine,
     schema_name: typing.Optional[str],
     table_name: str,
 ) -> bool:
     return engine.has_table(table_name=table_name, schema=schema_name)
-
-
-def inspect_table_and_cache(
-    cache_dir: pathlib.Path,
-    engine: sa.engine.Engine,
-    table_name: str,
-    schema_name: typing.Optional[str] = None,
-    inspector: typing.Optional[reflection.Inspector] = None,
-):
-    fp = cache_dir / f"{schema_name}.{table_name}.p"
-    if fp.exists():
-        table = pickle.load(open(file=fp, mode="rb"))
-    else:
-        table = inspect_table(
-            engine=engine,
-            table_name=table_name,
-            schema_name=schema_name,
-            inspector=inspector,
-        )
-        pickle.dump(table, open(fp, "wb"))
-    return table

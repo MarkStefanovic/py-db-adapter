@@ -13,7 +13,7 @@ __all__ = (
 
 
 class FloatColumnSqlAdapter(
-    column_sql_adapter.ColumnSqlAdapter[typing.Type[float]], abc.ABC
+    column_sql_adapter.ColumnSqlAdapter[float], abc.ABC
 ):
     def __init__(
         self,

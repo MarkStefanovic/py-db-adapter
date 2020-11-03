@@ -8,7 +8,7 @@ __all__ = ("BooleanColumnSqlAdapter", "StandardBooleanColumnSqlAdapter",)
 
 
 class BooleanColumnSqlAdapter(
-    column_sql_adapter.ColumnSqlAdapter[typing.Type[bool]], abc.ABC
+    column_sql_adapter.ColumnSqlAdapter[bool], abc.ABC
 ):
     def __init__(self, *, column: domain.BooleanColumn, wrapper: typing.Callable[[str], str],):
         super().__init__(column=column, wrapper=wrapper)

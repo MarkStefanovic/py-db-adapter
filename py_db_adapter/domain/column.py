@@ -63,7 +63,7 @@ class Column(abc.ABC):
 
     @primary_key.setter
     def primary_key(self, is_primary_key: bool) -> None:
-        """In some cases, a table does not have a primary key and we have to assign it one after the fact"""
+        """A table does not have a primary key and we have to assign it one after the fact"""
         self._primary_key = is_primary_key
 
     @property
@@ -94,14 +94,13 @@ class Column(abc.ABC):
 
     def __eq__(self, other: typing.Any) -> bool:
         if other.__class__ is self.__class__:
-            other = typing.cast(self.__class__, other)
+            other = typing.cast(Column, other)
             return (
                 self._schema_name,
                 self._table_name,
                 self._column_name,
                 self._nullable,
                 self._autoincrement,
-                self._primary_key,
                 self.data_type,
             ) == (
                 other._schema_name,
@@ -109,7 +108,6 @@ class Column(abc.ABC):
                 other._column_name,
                 other._nullable,
                 other._autoincrement,
-                other._primary_key,
                 other.data_type,
             )
 
@@ -124,7 +122,6 @@ class Column(abc.ABC):
                 self._column_name,
                 self._nullable,
                 self._autoincrement,
-                self._primary_key,
                 self.data_type,
             )
         )
@@ -166,7 +163,7 @@ class BooleanColumn(Column):
         return sa.Boolean()
 
     @property
-    def data_type(self) -> domain.DataType.Bool:
+    def data_type(self) -> typing.Literal[domain.DataType.Bool]:
         return domain.DataType.Bool
 
 
@@ -198,7 +195,7 @@ class DateColumn(Column):
         return sa.Date()
 
     @property
-    def data_type(self) -> domain.DataType.Date:
+    def data_type(self) -> typing.Literal[domain.DataType.Date]:
         return domain.DataType.Date
 
 
@@ -230,7 +227,7 @@ class DateTimeColumn(Column):
         return sa.DateTime()
 
     @property
-    def data_type(self) -> domain.DataType.DateTime:
+    def data_type(self) -> typing.Literal[domain.DataType.DateTime]:
         return domain.DataType.DateTime
 
 
@@ -259,7 +256,7 @@ class DecimalColumn(Column):
         )
 
     @property
-    def data_type(self) -> domain.DataType.Decimal:
+    def data_type(self) -> typing.Literal[domain.DataType.Decimal]:
         return domain.DataType.Decimal
 
     @property
@@ -299,7 +296,7 @@ class FloatColumn(Column):
         )
 
     @property
-    def data_type(self) -> domain.DataType.Float:
+    def data_type(self) -> typing.Literal[domain.DataType.Float]:
         return domain.DataType.Float
 
     @property
@@ -332,7 +329,7 @@ class IntegerColumn(Column):
         )
 
     @property
-    def data_type(self) -> domain.DataType.Int:
+    def data_type(self) -> typing.Literal[domain.DataType.Int]:
         return domain.DataType.Int
 
     @property
@@ -367,7 +364,7 @@ class TextColumn(Column):
         )
 
     @property
-    def data_type(self) -> domain.DataType.Text:
+    def data_type(self) -> typing.Literal[domain.DataType.Text]:
         return domain.DataType.Text
 
     @property
@@ -379,5 +376,8 @@ class TextColumn(Column):
         return str
 
     @property
-    def sqlalchemy_data_type(self) -> sa.Text:
-        return sa.Text()
+    def sqlalchemy_data_type(self) -> typing.Union[sa.VARCHAR, sa.Text]:
+        if self.max_length:
+            return sa.VARCHAR(length=self.max_length)
+        else:
+            return sa.Text()

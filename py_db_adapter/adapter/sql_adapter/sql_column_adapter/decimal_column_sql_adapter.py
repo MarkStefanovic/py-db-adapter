@@ -13,7 +13,7 @@ __all__ = (
 
 
 class DecimalColumnSqlAdapter(
-    column_sql_adapter.ColumnSqlAdapter[typing.Type[decimal.Decimal]], abc.ABC
+    column_sql_adapter.ColumnSqlAdapter[decimal.Decimal], abc.ABC
 ):
     def __init__(
         self,

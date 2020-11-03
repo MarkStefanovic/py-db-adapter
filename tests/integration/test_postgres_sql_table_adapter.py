@@ -8,7 +8,7 @@ from py_db_adapter import domain, adapter
 def test_postgres_sql_table_adapter_columns_sql_mapping(
     pyodbc_postgres_con: pyodbc.Connection,
 ) -> None:
-    table = adapter.inspect_table(
+    table = adapter.pyodbc_inspect_table(
         con=pyodbc_postgres_con,
         table_name="employee",
         schema_name="hr",
@@ -65,12 +65,12 @@ def test_postgres_float_column_sql_adapter_literal() -> None:
         wrapper=lambda o: f'"{o}"',
         max_decimal_places=4,
     )
-    actual = sql_adapter.literal(decimal.Decimal(1 / 12))
+    actual = sql_adapter.literal(1/12)
     expected = "0.0833"
     assert actual == expected
 
 
-def test_create(sql_adapter) -> None:
+def test_create(sql_adapter: adapter.PostgreSQLTableAdapter) -> None:
     assert sql_adapter.create == (
         "CREATE TABLE IF NOT EXISTS hr.employee (active BOOL NOT NULL, date_added "
         "TIMESTAMP NOT NULL, date_updated TIMESTAMP NULL, employee_dependents BIGINT NOT "
@@ -82,13 +82,13 @@ def test_create(sql_adapter) -> None:
     )
 
 
-def test_drop(sql_adapter) -> None:
+def test_drop(sql_adapter: adapter.PostgreSQLTableAdapter) -> None:
     assert sql_adapter.drop == "DROP TABLE IF EXISTS hr.employee"
 
 
-def test_row_count(sql_adapter) -> None:
+def test_row_count(sql_adapter: adapter.PostgreSQLTableAdapter) -> None:
     assert sql_adapter.row_count == "SELECT COUNT(*) AS row_count FROM hr.employee"
 
 
-def test_truncate(sql_adapter) -> None:
+def test_truncate(sql_adapter: adapter.PostgreSQLTableAdapter) -> None:
     assert sql_adapter.truncate == "TRUNCATE TABLE hr.employee"

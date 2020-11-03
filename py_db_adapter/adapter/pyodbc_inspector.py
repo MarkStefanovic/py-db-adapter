@@ -6,7 +6,6 @@ ref: see columns section of https://code.google.com/archive/p/pyodbc/wikis/Curso
 """
 from __future__ import annotations
 
-import dataclasses
 import pathlib
 import pickle
 import typing
@@ -18,19 +17,40 @@ from py_db_adapter import domain
 from py_db_adapter.domain import exceptions
 
 __all__ = (
-    "inspect_table",
-    "inspect_table_and_cache",
-    "table_exists",
+    "pyodbc_inspect_table",
+    "pyodbc_inspect_table_and_cache",
+    "pyodbc_table_exists",
 )
 
 
-def inspect_table(
+def pyodbc_inspect_table_and_cache(
+    cache_dir: pathlib.Path,
     con: pyodbc.Connection,
     table_name: str,
     schema_name: typing.Optional[str] = None,
     custom_pk_cols: typing.Optional[typing.Iterable[str]] = None,
 ) -> domain.Table:
-    if not table_exists(con=con, table_name=table_name, schema_name=schema_name):
+    fp = cache_dir / f"{schema_name}.{table_name}.p"
+    if fp.exists():
+        table = pickle.load(open(file=fp, mode="rb"))
+    else:
+        table = pyodbc_inspect_table(
+            con=con,
+            table_name=table_name,
+            schema_name=schema_name,
+            custom_pk_cols=custom_pk_cols,
+        )
+        pickle.dump(table, open(fp, "wb"))
+    return table
+
+
+def pyodbc_inspect_table(
+    con: pyodbc.Connection,
+    table_name: str,
+    schema_name: typing.Optional[str] = None,
+    custom_pk_cols: typing.Optional[typing.Iterable[str]] = None,
+) -> domain.Table:
+    if not pyodbc_table_exists(con=con, table_name=table_name, schema_name=schema_name):
         raise exceptions.TableDoesNotExist(
             table_name=table_name, schema_name=schema_name
         )
@@ -42,7 +62,7 @@ def inspect_table(
     for col in pyodbc_cols:
         pk_col = col.column_name in pk_col_names
         if col.domain_data_type == domain.DataType.Bool:
-            domain_col = domain.BooleanColumn(
+            domain_col: domain.Column = domain.BooleanColumn(
                 schema_name=schema_name,
                 table_name=table_name,
                 column_name=col.column_name,
@@ -72,8 +92,8 @@ def inspect_table(
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
                 primary_key=pk_col,
-                precision=col.precision,
-                scale=col.scale,
+                precision=col.precision or 18,
+                scale=col.scale or 2,
             )
         elif col.domain_data_type == domain.DataType.Float:
             domain_col = domain.FloatColumn(
@@ -125,8 +145,7 @@ def inspect_table(
         )
 
 
-@pydantic.dataclasses.dataclass(frozen=True)
-class PyodbcColumn:
+class PyodbcColumn(pydantic.BaseModel):
     auto_increment: int
     base_typeid: typing.Optional[int]
     char_octet_length: typing.Optional[int]
@@ -217,12 +236,11 @@ class PyodbcColumn:
     def schema_name(self) -> str:
         return self.table_owner
 
-    def __repr__(self):
-        return repr(dataclasses.asdict(self))
+    def __repr__(self) -> str:
+        return repr(self.dict())
 
 
-@pydantic.dataclasses.dataclass(frozen=True)
-class PyodbcDataInfo:
+class PyodbcDataInfo(pydantic.BaseModel):
     type_name: str
     data_type: int
     precision: str
@@ -243,12 +261,11 @@ class PyodbcDataInfo:
     num_prec_radix: typing.Optional[int]
     interval_precision: int
 
-    def __repr__(self):
-        return repr(dataclasses.asdict(self))
+    def __repr__(self) -> str:
+        return repr(self.dict())
 
 
-@pydantic.dataclasses.dataclass(frozen=True)
-class PyodbcPrimaryKeys:
+class PyodbcPrimaryKeys(pydantic.BaseModel):
     column_name: str
     key_seq: int
     pk_name: str
@@ -264,14 +281,14 @@ class PyodbcPrimaryKeys:
     def schema_name(self) -> str:
         return self.table_owner
 
-    def __repr__(self):
-        return repr(dataclasses.asdict(self))
+    def __repr__(self) -> str:
+        return repr(self.dict())
 
 
 def _inspect_cols(
     con: pyodbc.Connection, table_name: str, schema_name: typing.Optional[str]
 ) -> typing.List[PyodbcColumn]:
-    def handle_is_nullable(is_nullable: typing.Union[int, str]):
+    def handle_is_nullable(is_nullable: typing.Union[int, str]) -> bool:
         if isinstance(is_nullable, str):
             if is_nullable == "YES":
                 return True
@@ -377,31 +394,14 @@ def _inspect_pks(
         ]
 
 
-def table_exists(con: pyodbc.Connection, table_name: str, schema_name: str) -> bool:
+def pyodbc_table_exists(
+    con: pyodbc.Connection,
+    table_name: str,
+    schema_name: typing.Optional[str],
+) -> bool:
     with con.cursor() as cur:
         return bool(
             cur.tables(
                 table=table_name, schema=schema_name, tableType="TABLE"
             ).fetchone()
         )
-
-
-def inspect_table_and_cache(
-    cache_dir: pathlib.Path,
-    con: pyodbc.Connection,
-    table_name: str,
-    schema_name: typing.Optional[str] = None,
-    custom_pk_cols: typing.Optional[typing.Iterable[str]] = None,
-):
-    fp = cache_dir / f"{schema_name}.{table_name}.p"
-    if fp.exists():
-        table = pickle.load(open(file=fp, mode="rb"))
-    else:
-        table = inspect_table(
-            con=con,
-            table_name=table_name,
-            schema_name=schema_name,
-            custom_pk_cols=custom_pk_cols,
-        )
-        pickle.dump(table, open(fp, "wb"))
-    return table

@@ -14,6 +14,7 @@ D = typing.TypeVar(
     "D",
     bool,
     datetime.date,
+    datetime.datetime,
     decimal.Decimal,
     float,
     int,

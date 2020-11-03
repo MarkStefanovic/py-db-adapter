@@ -13,7 +13,7 @@ __all__ = (
 
 
 class DateColumnSqlAdapter(
-    column_sql_adapter.ColumnSqlAdapter[typing.Type[datetime.date]], abc.ABC
+    column_sql_adapter.ColumnSqlAdapter[datetime.date], abc.ABC
 ):
     def __init__(
         self, *, column: domain.DateColumn, wrapper: typing.Callable[[str], str]
@@ -39,6 +39,6 @@ class StandardDateColumnSqlAdapter(DateColumnSqlAdapter):
     def definition(self) -> str:
         return f"{self.wrapped_column_name} DATE {self.nullable}"
 
-    def literal(self, value: datetime.datetime) -> str:
+    def literal(self, value: datetime.date) -> str:
         date_str = value.strftime("%Y-%m-%d %H:%M:%S")
         return f"CAST({date_str!r} AS DATE)"

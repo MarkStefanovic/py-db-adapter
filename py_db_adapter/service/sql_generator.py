@@ -10,7 +10,7 @@ def get_keys(
     sql_adapter: adapter.SqlTableAdapter,
     additional_cols: typing.Iterable[str],
     pk_cols: typing.Optional[typing.Iterable[str]] = None,
-) -> typing.List[typing.Dict[str, typing.Any]]:
+) -> str:
     if pk_cols is None:
         pk_col_names = [
             col.wrapped_column_name

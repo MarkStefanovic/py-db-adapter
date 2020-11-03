@@ -37,7 +37,7 @@ def get_keys(
 
 def _compare_keys(
     *,
-    pk_cols: typing.List[str],
+    pk_cols: typing.Set[str],
     compare_cols: typing.List[str],
     src_rows: typing.List[typing.Dict[str, typing.Any]],
     dest_rows: typing.List[typing.Dict[str, typing.Any]],
@@ -91,7 +91,7 @@ def get_changes(
         typing.Tuple[typing.Tuple[str, typing.Any], ...],
     ],
 ]:
-    pk_cols = []
+    pk_cols = src_sql_adapter.table_metadata.primary_key_column_names
     src_rows = get_keys(
         sql_adapter=src_sql_adapter,
         con_or_engine=src_con_or_engine,

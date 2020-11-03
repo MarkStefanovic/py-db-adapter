@@ -12,7 +12,7 @@ dotenv.load_dotenv(dotenv.find_dotenv())
 
 
 @pytest.mark.fixture(scope="session")
-def engine():
+def engine() -> sa.engine.Engine:
     return sa.create_engine(os.environ["SQLALCHEMY_URI"])
 
 
@@ -27,7 +27,7 @@ def pyodbc_postgres_con() -> pyodbc.Connection:
 def sql_adapter(
     pyodbc_postgres_con: pyodbc.Connection,
 ) -> adapter.PostgreSQLTableAdapter:
-    table = adapter.inspect_table(
+    table = adapter.pyodbc_inspect_table(
         con=pyodbc_postgres_con,
         table_name="employee",
         schema_name="hr",

@@ -1,7 +1,7 @@
 from py_db_adapter import adapter, service
 
 
-def test_get_keys(sql_adapter: adapter.PostgreSQLTableAdapter):
+def test_get_keys(sql_adapter: adapter.PostgreSQLTableAdapter) -> None:
     actual = service.sql_generator.get_keys(
         sql_adapter=sql_adapter, additional_cols=["date_added", "date_updated"]
     )
