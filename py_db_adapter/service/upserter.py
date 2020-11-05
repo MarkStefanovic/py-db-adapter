@@ -6,6 +6,13 @@ from py_db_adapter import adapter
 from py_db_adapter.service import sql_generator
 import sqlalchemy as sa
 
+__all__ = (
+    "delete_rows",
+    "get_keys",
+    "get_changes",
+    "insert_rows",
+)
+
 
 def chunk_items(
     items: typing.Collection[typing.Any], n: int
@@ -14,8 +21,16 @@ def chunk_items(
     return [items[i : i + n] for i in range(0, len(items), n)]
 
 
-# def delete_rows(pk_values: typing.List[typing.Tuple[typing.Any, ...]]) -> int:
-
+def delete_rows(
+    *,
+    sql_adapter: adapter.SqlTableAdapter,
+    con: pyodbc.Connection,
+    pk_values: typing.List[typing.Tuple[typing.Any, ...]],
+) -> int:
+    sql = sql_generator.delete_rows_dummy(sql_adapter)
+    with con.cursor() as cur:
+        cur.fast_executemany = True
+        cur.executemany(sql, pk_values)
 
 
 def get_keys(
@@ -119,11 +134,12 @@ def insert_rows(
     sql_adapter: adapter.SqlTableAdapter,
     con: pyodbc.Connection,
     rows: typing.List[typing.Dict[str, typing.Any]],
-    fast_executemany: bool = True
+    fast_executemany: bool = True,
 ) -> int:
     with con.cursor() as cur:
         cur.fast_executemany = fast_executemany
+        columns = sorted(rows[0].keys())
         row_values = [tuple(v for k, v in sorted(row.items())) for row in rows]
-        sql = sql_generator.insert_dummies(sql_adapter)
+        sql = sql_generator.insert_rows(sql_adapter=sql_adapter, columns=columns)
         cur.executemany(sql, row_values)
         return len(rows)

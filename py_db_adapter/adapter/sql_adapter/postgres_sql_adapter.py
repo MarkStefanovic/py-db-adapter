@@ -4,10 +4,9 @@ import typing
 
 from py_db_adapter import domain
 from py_db_adapter.adapter.sql_adapter import (
-    sql_column_adapter,
-    sql_formatter,
-    sql_table_adapter,
+    sql_column_adapter, sql_table_adapter,
 )
+from py_db_adapter.adapter import sql_formatter
 
 __all__ = (
     "PostgreSQLTableAdapter",

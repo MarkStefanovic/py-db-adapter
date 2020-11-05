@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import datetime
 import decimal
@@ -7,7 +9,7 @@ from py_db_adapter import domain
 
 __all__ = (
     "ColumnSqlAdapter",
-    "D",
+    "AnyColumnSqlAdapter",
 )
 
 D = typing.TypeVar(
@@ -78,3 +80,6 @@ class ColumnSqlAdapter(abc.ABC, typing.Generic[D]):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}: {self.wrapped_column_name}>"
+
+
+AnyColumnSqlAdapter = ColumnSqlAdapter[D]

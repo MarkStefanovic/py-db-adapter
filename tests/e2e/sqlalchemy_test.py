@@ -1,5 +1,8 @@
 import sqlalchemy as sa
 
+from py_db_adapter import domain, adapter, service
+
+
 metadata = sa.MetaData()
 
 users = sa.Table(
@@ -42,7 +45,11 @@ if __name__ == "__main__":
 
         # the following is the more typical way inserts are done using the expression language
         con.execute(
-            users.insert(), {"id": 2, "name": "wendy", "fullname": "Wendy Williams"}
+            users.insert(), [
+                {"id": 2, "name": "wendy", "fullname": "Wendy Williams"},
+                {"id": 3, "name": "steve", "fullname": "Steve Smith"},
+                {"id": 4, "name": "bill", "fullname": "Billy Bob"},
+            ]
         )
         con.execute(
             addresses.insert(),

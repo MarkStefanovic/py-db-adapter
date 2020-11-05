@@ -1,0 +1,4 @@
+DROP TYPE IF EXISTS hr.gender CASCADE;
+DROP TABLE IF EXISTS hr.employee CASCADE;
+DROP TABLE IF EXISTS sales.employee_customer CASCADE;
+DROP TABLE IF EXISTS sales.customer CASCADE;

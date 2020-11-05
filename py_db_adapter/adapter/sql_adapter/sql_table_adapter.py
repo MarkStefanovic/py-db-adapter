@@ -2,7 +2,8 @@ import abc
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter.sql_adapter import sql_column_adapter, sql_formatter
+from py_db_adapter.adapter.sql_adapter import sql_column_adapter
+from py_db_adapter.adapter import sql_formatter
 
 __all__ = (
     "Row",
@@ -36,7 +37,7 @@ class SqlTableAdapter(abc.ABC):
     @property
     def column_sql_adapters(
         self,
-    ) -> typing.List[sql_column_adapter.ColumnSqlAdapter[sql_column_adapter.D]]:
+    ) -> typing.List[sql_column_adapter.AnyColumnSqlAdapter]:
         if self._column_sql_adapters is None:
             col_adapters = []
             for col in self._table.columns:
@@ -132,7 +133,7 @@ class SqlTableAdapter(abc.ABC):
         return self._max_float_literal_decimal_places or 5
 
     @property
-    def primary_key_column_sql_adapters(self) -> typing.List[sql_column_adapter.ColumnSqlAdapter[sql_column_adapter.D]]:
+    def primary_key_column_sql_adapters(self) -> typing.List[sql_column_adapter.AnyColumnSqlAdapter]:
         return [col for col in self.column_sql_adapters if col.column_metadata.primary_key]
 
     @property
