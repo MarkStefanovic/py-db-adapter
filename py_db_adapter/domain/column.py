@@ -63,7 +63,7 @@ class Column(abc.ABC):
 
     @primary_key.setter
     def primary_key(self, is_primary_key: bool) -> None:
-        """A table does not have a primary key and we have to assign it one after the fact"""
+        """If a table does not have a primary key, then we have to assign it one after the fact."""
         self._primary_key = is_primary_key
 
     @property

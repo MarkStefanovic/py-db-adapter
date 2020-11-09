@@ -6,14 +6,8 @@ from py_db_adapter.adapter.sql_adapter import sql_column_adapter
 from py_db_adapter.adapter import sql_formatter
 
 __all__ = (
-    "Row",
-    "Rows",
     "SqlTableAdapter",
 )
-
-
-Row = typing.Dict[str, typing.Hashable]
-Rows = typing.Collection[Row]
 
 
 class SqlTableAdapter(abc.ABC):
