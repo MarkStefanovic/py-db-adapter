@@ -14,6 +14,87 @@ __all__ = (
     "PostgresBooleanColumnSqlAdapter",
 )
 
+# SEE: SELECT * FROM pg_get_keywords WHERE catdesc = 'reserved' ORDER BY 1;
+POSTGRES_RESERVED_KEYWORDS = {
+    "all",
+    "analyse",
+    "analyze",
+    "and",
+    "any",
+    "array",
+    "as",
+    "asc",
+    "asymmetric",
+    "both",
+    "case",
+    "cast",
+    "check",
+    "collate",
+    "column",
+    "constraint",
+    "create",
+    "current_catalog",
+    "current_date",
+    "current_role",
+    "current_time",
+    "current_timestamp",
+    "current_user",
+    "default",
+    "deferrable",
+    "desc",
+    "distinct",
+    "do",
+    "else",
+    "end",
+    "except",
+    "false",
+    "fetch",
+    "for",
+    "foreign",
+    "from",
+    "grant",
+    "group",
+    "having",
+    "in",
+    "initially",
+    "intersect",
+    "into",
+    "lateral",
+    "leading",
+    "limit",
+    "localtime",
+    "localtimestamp",
+    "not",
+    "null",
+    "offset",
+    "on",
+    "only",
+    "or",
+    "order",
+    "placing",
+    "primary",
+    "references",
+    "returning",
+    "select",
+    "session_user",
+    "some",
+    "symmetric",
+    "table",
+    "then",
+    "to",
+    "trailing",
+    "true",
+    "union",
+    "unique",
+    "user",
+    "using",
+    "variadic",
+    "when",
+    "where",
+    "window",
+    "with",
+}
+
 
 class PostgreSQLTableAdapter(sql_table_adapter.SqlTableAdapter):
     def __init__(self, table: domain.Table):
@@ -96,7 +177,7 @@ class PostgreSQLTableAdapter(sql_table_adapter.SqlTableAdapter):
         return f"TRUNCATE TABLE {self.full_table_name}"
 
     def wrap(self, obj_name: str) -> str:
-        if " " in obj_name:
+        if " " in obj_name or obj_name.lower() in POSTGRES_RESERVED_KEYWORDS:
             return f'"{obj_name}"'
         else:
             return obj_name

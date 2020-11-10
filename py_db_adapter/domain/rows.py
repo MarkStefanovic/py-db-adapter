@@ -22,9 +22,21 @@ class Rows:
         self._column_names = list(column_names)
         self._rows = list(rows)
 
+    def column(self, /, column_name: str) -> typing.List[typing.Hashable]:
+        col_indices = {col_name: i for i, col_name in enumerate(self._column_names)}
+        col_index = col_indices[column_name]
+        return [row[col_index] for row in self._rows]
+
     @property
     def column_names(self) -> typing.List[str]:
         return self._column_names
+
+    @property
+    def column_indices(self) -> typing.Dict[str, int]:
+        return {
+            col_name: i
+            for i, col_name in enumerate(self._column_names)
+        }
 
     @classmethod
     def from_dicts(
@@ -78,6 +90,23 @@ class Rows:
 
     def as_tuples(self) -> typing.List[Row]:
         return self._rows
+
+    @property
+    def row_count(self) -> int:
+        return len(self._rows)
+    # def subset(self, column_names: typing.List[str]) -> Rows:
+    #     col_indices = {
+    #         column_name: i
+    #         for i, column_name in enumerate(self._column_names)
+    #     }
+    #     rows = [
+    #         tuple(row[col_indices[col_name]] for col_name in column_names)
+    #         for row in self._rows
+    #     ]
+    #     return Rows(
+    #         column_names=column_names,
+    #         rows=rows,
+    #     )
 
     def __eq__(self, other: typing.Any) -> bool:
         if other.__class__ is self.__class__:

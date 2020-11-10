@@ -47,6 +47,14 @@ class DynamicRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def keys(self) -> domain.Rows:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def fetch_rows_by_primary_key_values(self, rows: domain.Rows) -> domain.Rows:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def update(self, /, rows: domain.Rows) -> None:
         raise NotImplementedError
 
@@ -72,16 +80,71 @@ class PyodbcDynamicRepository(DynamicRepository):
         self._connection = connection
         self._fast_executemany = fast_executemany
 
+    def add(self, /, rows: domain.Rows) -> None:
+        col_name_csv = ", ".join(
+            self._sql_adapter.wrap(col_name) for col_name in rows.column_names
+        )
+        dummy_csv = ", ".join("?" for _ in rows.column_names)
+        sql = f"INSERT INTO {self._sql_adapter.full_table_name} ({col_name_csv}) VALUES ({dummy_csv})"
+        with self._connection.cursor() as cur:
+            cur.fast_executemany = self._fast_executemany
+            cur.executemany(sql, rows.as_tuples())
+
     def delete(self, /, rows: domain.Rows) -> None:
         where_clause = " AND ".join(
-            f"{self.sql_adapter.wrap(col)} = ?" for col in rows.column_names
+            f"{self._sql_adapter.wrap(col)} = ?" for col in rows.column_names
         )
-        sql = f"DELETE FROM {self.sql_adapter.full_table_name} WHERE {where_clause}"
+        sql = f"DELETE FROM {self._sql_adapter.full_table_name} WHERE {where_clause}"
         with self._connection.cursor() as cur:
             cur.fast_executemany = True
             cur.executemany(sql, rows.as_tuples())
 
-    @property
+    def fetch_rows_by_primary_key_values(self, rows: domain.Rows) -> domain.Rows:
+        pk_col_names = [
+            col.column_metadata.column_name
+            for col in self._sql_adapter.primary_key_column_sql_adapters
+        ]
+        if len(pk_col_names) == 1:
+            pk_col_name = pk_col_names[0]
+            wrapped_pk_col_name = self._sql_adapter.wrap(pk_col_name)
+            col_adapter = next(
+                col
+                for col in self._sql_adapter.column_sql_adapters
+                if col.column_metadata.column_name == pk_col_name
+            )
+            pk_values = rows.column(pk_col_name)
+            pk_values_csv = ",".join(col_adapter.literal(v) for v in pk_values)
+            where_clause = f"{wrapped_pk_col_name} IN ({pk_values_csv})"
+        else:
+            wrapped_pk_col_names = {}
+            for col_name in rows.column_names:
+                if col_name in pk_col_names:
+                    wrapped_col_name = self._sql_adapter.wrap(col_name)
+                    wrapped_pk_col_names[wrapped_col_name] = rows.column_indices[
+                        col_name
+                    ]
+            predicates = []
+            for row in rows.as_tuples():
+                predicate = " AND ".join(
+                    f"{col_name} = {row[ix]}"
+                    for col_name, ix in wrapped_pk_col_names.items()
+                )
+                predicates.append(predicate)
+            where_clause = " OR ".join(f"({predicate})" for predicate in predicates)
+        select_col_names = [
+            col.wrapped_column_name for col in self._sql_adapter.column_sql_adapters
+        ]
+        select_cols_csv = ", ".join(
+            col.wrapped_column_name for col in self._sql_adapter.column_sql_adapters
+        )
+        sql = f"SELECT {select_cols_csv} FROM {self._sql_adapter.full_table_name} WHERE {where_clause}"
+        with self._connection.cursor() as cur:
+            print(f"Executing SQL:\n\t{sql}")
+            result = cur.execute(sql).fetchall()
+            return domain.Rows(
+                column_names=select_col_names, rows=[tuple(row) for row in result]
+            )
+
     def keys(self) -> domain.Rows:
         pk_cols_csv = ", ".join(
             col.wrapped_column_name
@@ -92,7 +155,11 @@ class PyodbcDynamicRepository(DynamicRepository):
             for col in self._sql_adapter.column_sql_adapters
             if col.column_metadata.column_name in self._change_tracking_columns
         )
-        sql = f"SELECT DISTINCT {pk_cols_csv}, {change_cols_csv} FROM {self._sql_adapter.full_table_name}"
+        if change_cols_csv:
+            select_cols_csv = f"{pk_cols_csv}, {change_cols_csv}"
+        else:
+            select_cols_csv = pk_cols_csv
+        sql = f"SELECT DISTINCT {select_cols_csv} FROM {self._sql_adapter.full_table_name}"
         with self._connection.cursor() as cur:
             print(f"Executing sql:\n\t{sql}")
             result = cur.execute(sql).fetchall()
@@ -104,39 +171,60 @@ class PyodbcDynamicRepository(DynamicRepository):
             )
             # return [dict(zip(column_names, row)) for row in result]
 
-    def add(self, /, rows: domain.Rows) -> None:
-        col_name_csv = ", ".join(
-            self._sql_adapter.wrap(col_name) for col_name in rows.column_names
+    def update(self, /, rows: domain.Rows) -> None:
+        pk_col_names = {
+            col.column_metadata.column_name
+            for col in self._sql_adapter.primary_key_column_sql_adapters
+        }
+        param_indices = []
+        non_pk_col_wrapped_names = []
+        for col_name in rows.column_names:
+            if col_name not in pk_col_names:
+                wrapped_name = self._sql_adapter.wrap(col_name)
+                non_pk_col_wrapped_names.append(wrapped_name)
+                row_col_index = rows.column_indices[col_name]
+                param_indices.append(row_col_index)
+        set_clause = ", ".join(
+            f"{col_name} = ?" for col_name in non_pk_col_wrapped_names
         )
-        dummy_csv = ", ".join("?" for _ in rows.column_names)
-        sql = f"INSERT INTO {self._sql_adapter.full_table_name} ({col_name_csv}) VALUES ({dummy_csv})"
+        pk_col_wrapped_names = []
+        for col_name in rows.column_names:
+            if col_name in pk_col_names:
+                wrapped_name = self._sql_adapter.wrap(col_name)
+                pk_col_wrapped_names.append(wrapped_name)
+                row_col_index = rows.column_indices[col_name]
+                param_indices.append(row_col_index)
+        where_clause = " AND ".join(
+            f"{col_name} = ?" for col_name in pk_col_wrapped_names
+        )
+
+        sql = f"UPDATE {self._sql_adapter.full_table_name} SET {set_clause} WHERE {where_clause}"
+        params = [tuple(row[i] for i in param_indices) for row in rows.as_tuples()]
         with self._connection.cursor() as cur:
             cur.fast_executemany = self._fast_executemany
-            cur.executemany(sql, rows.as_tuples())
+            print(f"Executing SQL:\n\tsql:{sql}\n\tparams: {params}")
+            cur.executemany(sql, params)
 
-    def update(self, /, rows: domain.Rows) -> None:
-        pass
-
-
-# def get_keys(
-#     *,
-#     sql_adapter: adapter.SqlTableAdapter,
-#     con_or_engine: typing.Union[pyodbc.Connection, sa.engine.Engine],
-#     additional_cols: typing.List[str],
-# ) -> typing.List[typing.Dict[str, typing.Any]]:
-#     sql = sql_generator.get_keys(
-#         sql_adapter=sql_adapter,
-#         additional_cols=additional_cols,
-#     )
-#     if isinstance(con_or_engine, pyodbc.Connection):
-#         with con_or_engine.cursor() as cur:
-#             result = cur.execute(sql).fetchall()
-#             column_names = [col[0] for col in cur.description]
-#             return [dict(zip(column_names, row)) for row in result]
-#     else:
-#         with con_or_engine.begin() as con:
-#             result = con.execute(sa.text(sql)).fetchall()
-#             return [dict(row) for row in result]
+    def upsert_table(self, source_repo: DynamicRepository):
+        key_cols = {
+            col.column_metadata.column_name
+            for col in self._sql_adapter.column_sql_adapters
+            if col.column_metadata.primary_key
+        }
+        changes = compare_rows(
+            key_cols=key_cols, src_rows=source_repo.keys(), dest_rows=self.keys()
+        )
+        print(f"{changes['added'].row_count}=")
+        if changes["added"].row_count:
+            new_rows = source_repo.fetch_rows_by_primary_key_values(rows=changes["added"])
+            self.add(new_rows)
+        if changes["deleted"].row_count:
+            self.delete(changes["deleted"])
+        if changes["updated"].row_count:
+            updated_rows = source_repo.fetch_rows_by_primary_key_values(
+                rows=changes["updated"]
+            )
+            self.update(updated_rows)
 
 
 def fetch_rows(con: pyodbc.Connection, sql: str) -> domain.Rows:

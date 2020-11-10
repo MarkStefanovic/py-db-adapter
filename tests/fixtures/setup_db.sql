@@ -112,9 +112,30 @@ VALUES
 ,   (1, 2)
 ;
 
+SELECT SETVAL('sales.customer_customer_id_seq', (SELECT MAX(customer_id) FROM sales.customer) + 1);
 
 
 
-
-
-
+DROP TABLE IF EXISTS sales.customer2 CASCADE;
+CREATE TABLE IF NOT EXISTS sales.customer2 (
+    customer_id INT NOT NULL
+,   customer_first_name TEXT NOT NULL
+,   customer_last_name TEXT NOT NULL
+,   date_added TIMESTAMP NOT NULL DEFAULT now()
+,   date_updated TIMESTAMP NULL
+);
+ALTER TABLE sales.customer2 OWNER TO postgres;
+INSERT INTO sales.customer2 (
+    customer_id
+,   customer_first_name
+,   customer_last_name
+,   date_added
+,   date_updated
+)
+SELECT
+    customer_id
+,   customer_first_name
+,   customer_last_name
+,   date_added
+,   date_updated
+FROM sales.customer;

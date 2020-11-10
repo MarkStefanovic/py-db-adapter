@@ -49,4 +49,4 @@ class StandardTextColumnSqlAdapter(TextColumnSqlAdapter):
             return f"{self.wrapped_column_name} TEXT {self.nullable}"
 
     def literal(self, value: str) -> str:
-        return str(value)
+        return f"{value!r}"

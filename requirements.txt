@@ -3,3 +3,4 @@ python-dotenv~=0.15.0
 pyodbc~=4.0.30
 pytest~=6.1.2
 pydantic~=1.7.1
+psycopg2-binary
