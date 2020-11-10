@@ -4,12 +4,12 @@ import typing
 import pyodbc
 
 from py_db_adapter import domain, adapter
-import sqlalchemy as sa
 
 __all__ = (
     "DynamicRepository",
     "PyodbcDynamicRepository",
 )
+
 
 def chunk_items(
     items: typing.Collection[typing.Any], n: int
@@ -74,8 +74,7 @@ class PyodbcDynamicRepository(DynamicRepository):
 
     def delete(self, /, rows: domain.Rows) -> None:
         where_clause = " AND ".join(
-            f"{self.sql_adapter.wrap(col)} = ?"
-            for col in rows.column_names
+            f"{self.sql_adapter.wrap(col)} = ?" for col in rows.column_names
         )
         sql = f"DELETE FROM {self.sql_adapter.full_table_name} WHERE {where_clause}"
         with self._connection.cursor() as cur:
@@ -93,9 +92,10 @@ class PyodbcDynamicRepository(DynamicRepository):
             for col in self._sql_adapter.column_sql_adapters
             if col.column_metadata.column_name in self._change_tracking_columns
         )
-        sql = f"SELECT {pk_cols_csv}, {change_cols_csv} FROM {self._sql_adapter.full_table_name}"
+        sql = f"SELECT DISTINCT {pk_cols_csv}, {change_cols_csv} FROM {self._sql_adapter.full_table_name}"
         with self._connection.cursor() as cur:
-            result = cur.execute(sql).fetch_rows()
+            print(f"Executing sql:\n\t{sql}")
+            result = cur.execute(sql).fetchall()
             column_names = [col[0] for col in cur.description]
             rows = [tuple(row) for row in result]
             return domain.Rows(
@@ -109,15 +109,14 @@ class PyodbcDynamicRepository(DynamicRepository):
             self._sql_adapter.wrap(col_name) for col_name in rows.column_names
         )
         dummy_csv = ", ".join("?" for _ in rows.column_names)
-        sql = (
-            f"INSERT INTO {self._sql_adapter.full_table_name} ({col_name_csv}) VALUES ({dummy_csv})"
-        )
+        sql = f"INSERT INTO {self._sql_adapter.full_table_name} ({col_name_csv}) VALUES ({dummy_csv})"
         with self._connection.cursor() as cur:
             cur.fast_executemany = self._fast_executemany
             cur.executemany(sql, rows.as_tuples())
 
     def update(self, /, rows: domain.Rows) -> None:
         pass
+
 
 # def get_keys(
 #     *,
@@ -155,8 +154,12 @@ def compare_rows(
     dest_rows: domain.Rows,
 ) -> typing.Dict[str, domain.Rows]:
     compare_cols = {col for col in src_rows.column_names if col not in key_cols}
-    src_hashes = src_rows.as_lookup_table(key_columns=key_cols, value_columns=compare_cols)
-    dest_hashes = dest_rows.as_lookup_table(key_columns=key_cols, value_columns=compare_cols)
+    src_hashes = src_rows.as_lookup_table(
+        key_columns=key_cols, value_columns=compare_cols
+    )
+    dest_hashes = dest_rows.as_lookup_table(
+        key_columns=key_cols, value_columns=compare_cols
+    )
     src_key_set = set(src_hashes.keys())
     dest_key_set = set(dest_hashes.keys())
     added = {k: src_hashes[k] for k in (src_key_set - dest_key_set)}
@@ -169,9 +172,21 @@ def compare_rows(
         and src_hashes.get(k, tuple()) != dest_hashes.get(k, tuple())
     }
     return {
-        "added": added,
-        "deleted": deleted,
-        "updated": updates,
+        "added": domain.Rows.from_lookup_table(
+            lookup_table=added,
+            key_columns=key_cols,
+            value_columns=compare_cols,
+        ),
+        "deleted": domain.Rows.from_lookup_table(
+            lookup_table=deleted,
+            key_columns=key_cols,
+            value_columns=compare_cols,
+        ),
+        "updated": domain.Rows.from_lookup_table(
+            lookup_table=updates,
+            key_columns=key_cols,
+            value_columns=compare_cols,
+        ),
     }
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import typing
 
 __all__ = (
@@ -30,10 +31,24 @@ class Rows:
         cls, /, rows: typing.List[typing.Dict[str, typing.Hashable]]
     ) -> Rows:
         column_names = sorted(rows[0].keys())
-        rows = (
-            tuple(typing.cast(typing.Hashable, v) for _, v in sorted(row.items()))
-            for row in rows
-        )
+        new_rows = [tuple(v for _, v in sorted(row.items())) for row in rows]
+        return Rows(column_names=column_names, rows=new_rows)
+
+    @classmethod
+    def from_lookup_table(
+        cls,
+        *,
+        lookup_table: typing.Dict[Row, Row],
+        key_columns: typing.Set[str],
+        value_columns: typing.Set[str],
+    ) -> Rows:
+        ordered_key_col_names = [col for col in key_columns if col in key_columns]
+        ordered_value_col_names = [col for col in key_columns if col in value_columns]
+        column_names = ordered_key_col_names + ordered_value_col_names
+        rows = [
+            tuple(itertools.chain(keys, values))
+            for keys, values in lookup_table.items()
+        ]
         return Rows(column_names=column_names, rows=rows)
 
     def as_dicts(self) -> typing.List[typing.Dict[str, typing.Hashable]]:

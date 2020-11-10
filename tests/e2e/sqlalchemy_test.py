@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 
-from py_db_adapter import domain, adapter, service
+from py_db_adapter import domain, adapter
 
 
 metadata = sa.MetaData()

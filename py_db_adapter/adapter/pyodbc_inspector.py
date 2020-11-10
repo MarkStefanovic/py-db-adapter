@@ -128,9 +128,9 @@ def pyodbc_inspect_table(
 
     if custom_pk_cols:
         col_names = {col.column_name for col in domain_cols}
-        missing_pk_cols = {col for col in pk_cols if col not in col_names}
-        if missing_pk_cols:
-            raise exceptions.InvalidCustomPrimaryKey(sorted(missing_pk_cols))
+        missing_pk_col_names = {col for col in pk_col_names if col not in col_names}
+        if missing_pk_col_names:
+            raise exceptions.InvalidCustomPrimaryKey(sorted(missing_pk_col_names))
 
     if custom_pk_cols or any(col for col in domain_cols if col.primary_key):
         return domain.Table(

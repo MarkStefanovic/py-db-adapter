@@ -146,3 +146,4 @@ poetry.lock
 *scratch.py
 Pipfile.lock
 cache
+.env

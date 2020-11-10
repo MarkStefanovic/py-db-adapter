@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS hr.employee (
     employee_gender            hr.GENDER        DEFAULT 'Unknown'::hr.GENDER NOT NULL,
     quotes                     TEXT[]
 );
-ALTER TABLE hr.employee OWNER TO marks;
+ALTER TABLE hr.employee OWNER TO postgres;
 INSERT INTO hr.employee (
     employee_id
 ,   employee_name
@@ -71,20 +71,6 @@ VALUES
     )
 ;
 
-DROP TABLE IF EXISTS sales.employee_customer CASCADE;
-CREATE TABLE sales.employee_customer (
-    employee_id INT NOT NULL REFERENCES hr.employee
-,   customer_id INT NOT NULL REFERENCES sales.customer
-,   date_added TIMESTAMP NOT NULL DEFAULT now()
-,   PRIMARY KEY (employee_id, customer_id)
-);
-ALTER TABLE sales.employee_customer OWNER TO marks;
-INSERT INTO sales.employee_customer (employee_id, customer_id)
-VALUES
-    (1, 1)
-,   (1, 2)
-;
-
 DROP TABLE IF EXISTS sales.customer CASCADE;
 CREATE TABLE IF NOT EXISTS sales.customer (
     customer_id SERIAL PRIMARY KEY
@@ -93,7 +79,7 @@ CREATE TABLE IF NOT EXISTS sales.customer (
 ,   date_added TIMESTAMP NOT NULL DEFAULT now()
 ,   date_updated TIMESTAMP NULL
 );
-ALTER TABLE sales.customer OWNER TO marks;
+ALTER TABLE sales.customer OWNER TO postgres;
 INSERT INTO sales.customer (
     customer_id
 ,   customer_first_name
@@ -111,6 +97,22 @@ VALUES
 ,   (8, 'Mandie', 'Mandelbrot', CAST('2010-09-30 01:32:33' AS TIMESTAMP))
 ,   (9, 'Steve', 'Smith', CAST('2010-04-05 06:37:38' AS TIMESTAMP))
 ;
+
+DROP TABLE IF EXISTS sales.employee_customer CASCADE;
+CREATE TABLE sales.employee_customer (
+    employee_id INT NOT NULL REFERENCES hr.employee
+,   customer_id INT NOT NULL REFERENCES sales.customer
+,   date_added TIMESTAMP NOT NULL DEFAULT now()
+,   PRIMARY KEY (employee_id, customer_id)
+);
+ALTER TABLE sales.employee_customer OWNER TO postgres;
+INSERT INTO sales.employee_customer (employee_id, customer_id)
+VALUES
+    (1, 1)
+,   (1, 2)
+;
+
+
 
 
 
