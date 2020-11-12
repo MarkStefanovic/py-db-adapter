@@ -155,9 +155,8 @@ class PyodbcDynamicRepository(DynamicRepository):
             select_col_names = [
                 col.wrapped_column_name for col in self._sql_adapter.column_sql_adapters
             ]
-        select_cols_csv = ", ".join(
-            col.wrapped_column_name for col in self._sql_adapter.column_sql_adapters
-        )
+
+        select_cols_csv = ", ".join(select_col_names)
         sql = f"SELECT {select_cols_csv} FROM {self._sql_adapter.full_table_name} WHERE {where_clause}"
         with self._connection.cursor() as cur:
             print(f"Executing SQL:\n\t{sql}")
