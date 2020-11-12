@@ -400,8 +400,4 @@ def pyodbc_table_exists(
     schema_name: typing.Optional[str],
 ) -> bool:
     with con.cursor() as cur:
-        return bool(
-            cur.tables(
-                table=table_name, schema=schema_name, tableType="TABLE"
-            ).fetchone()
-        )
+        return bool(cur.tables(table=table_name, schema=schema_name).fetchone())
