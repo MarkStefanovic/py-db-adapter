@@ -113,7 +113,8 @@ def test_insert_with_auto_pk_value(
         {"customer_id": 3},
         {"customer_id": 4},
     ]
-    pks = repo.fetch_rows_by_primary_key_values(pda.Rows.from_dicts(pks_to_fetch))  # type: ignore
+    pk_rows = pda.Rows.from_dicts(pks_to_fetch)
+    pks = repo.fetch_rows_by_primary_key_values(rows=pk_rows, columns=None)  # type: ignore
     print(f"{pks=!s}")
 
     backup_repo = pda.PyodbcDynamicRepository(

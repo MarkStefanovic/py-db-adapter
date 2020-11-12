@@ -51,7 +51,9 @@ class DynamicRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def fetch_rows_by_primary_key_values(self, rows: domain.Rows) -> domain.Rows:
+    def fetch_rows_by_primary_key_values(
+        self, *, rows: domain.Rows, columns: typing.Optional[typing.Set[str]]
+    ) -> domain.Rows:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -105,7 +107,9 @@ class PyodbcDynamicRepository(DynamicRepository):
             cur.fast_executemany = self._fast_executemany
             cur.executemany(sql, rows.as_tuples())
 
-    def fetch_rows_by_primary_key_values(self, rows: domain.Rows) -> domain.Rows:
+    def fetch_rows_by_primary_key_values(
+        self, *, rows: domain.Rows, columns: typing.Optional[typing.Set[str]]
+    ) -> domain.Rows:
         pk_col_names = [
             col.column_metadata.column_name
             for col in self._sql_adapter.primary_key_column_sql_adapters
@@ -137,9 +141,16 @@ class PyodbcDynamicRepository(DynamicRepository):
                 )
                 predicates.append(predicate)
             where_clause = " OR ".join(f"({predicate})" for predicate in predicates)
-        select_col_names = [
-            col.wrapped_column_name for col in self._sql_adapter.column_sql_adapters
-        ]
+        if columns:
+            select_col_names = [
+                col.wrapped_column_name
+                for col in self._sql_adapter.column_sql_adapters
+                if col.column_metadata.column_name in columns
+            ]
+        else:
+            select_col_names = [
+                col.wrapped_column_name for col in self._sql_adapter.column_sql_adapters
+            ]
         select_cols_csv = ", ".join(
             col.wrapped_column_name for col in self._sql_adapter.column_sql_adapters
         )
@@ -227,16 +238,25 @@ class PyodbcDynamicRepository(DynamicRepository):
         changes = compare_rows(
             key_cols=key_cols, src_rows=source_repo.keys(), dest_rows=self.keys()
         )
+        src_column_names = {
+            col.column_metadata.column_name
+            for col in source_repo.sql_adapter.column_sql_adapters
+        }
+        dest_column_names = {
+            col.column_metadata.column_name
+            for col in self._sql_adapter.column_sql_adapters
+        }
+        common_cols = src_column_names.intersection(dest_column_names)
         if changes["added"].row_count and add:
             new_rows = source_repo.fetch_rows_by_primary_key_values(
-                rows=changes["added"]
+                rows=changes["added"], columns=common_cols
             )
             self.add(new_rows)
         if changes["deleted"].row_count and delete:
             self.delete(changes["deleted"])
         if changes["updated"].row_count and update:
             updated_rows = source_repo.fetch_rows_by_primary_key_values(
-                rows=changes["updated"]
+                rows=changes["updated"], columns=common_cols
             )
             self.update(updated_rows)
 
