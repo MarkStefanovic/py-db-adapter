@@ -91,12 +91,18 @@ class PyodbcDynamicRepository(DynamicRepository):
             cur.executemany(sql, rows.as_tuples())
 
     def delete(self, /, rows: domain.Rows) -> None:
+        pk_col_names = {
+            col.column_metadata.column_name
+            for col in self._sql_adapter.primary_key_column_sql_adapters
+        }
         where_clause = " AND ".join(
-            f"{self._sql_adapter.wrap(col)} = ?" for col in rows.column_names
+            f"{self._sql_adapter.wrap(col)} = ?"
+            for col in rows.column_names
+            if col in pk_col_names
         )
         sql = f"DELETE FROM {self._sql_adapter.full_table_name} WHERE {where_clause}"
         with self._connection.cursor() as cur:
-            cur.fast_executemany = True
+            cur.fast_executemany = self._fast_executemany
             cur.executemany(sql, rows.as_tuples())
 
     def fetch_rows_by_primary_key_values(self, rows: domain.Rows) -> domain.Rows:
