@@ -9,7 +9,6 @@ from py_db_adapter import domain
 
 __all__ = (
     "ColumnSqlAdapter",
-    "AnyColumnSqlAdapter",
 )
 
 D = typing.TypeVar(
