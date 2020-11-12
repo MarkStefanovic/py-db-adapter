@@ -90,7 +90,9 @@ class PyodbcDynamicRepository(DynamicRepository):
         sql = f"INSERT INTO {self._sql_adapter.full_table_name} ({col_name_csv}) VALUES ({dummy_csv})"
         with self._connection.cursor() as cur:
             cur.fast_executemany = self._fast_executemany
-            cur.executemany(sql, rows.as_tuples())
+            params = rows.as_tuples()
+            print(f"Executing SQL:\n\t{sql}\n\t{params=}")
+            cur.executemany(sql, params)
 
     def delete(self, /, rows: domain.Rows) -> None:
         pk_col_names = {
@@ -105,7 +107,9 @@ class PyodbcDynamicRepository(DynamicRepository):
         sql = f"DELETE FROM {self._sql_adapter.full_table_name} WHERE {where_clause}"
         with self._connection.cursor() as cur:
             cur.fast_executemany = self._fast_executemany
-            cur.executemany(sql, rows.as_tuples())
+            params = rows.as_tuples()
+            print(f"Executing SQL:\n\t{sql}\n\t{params=}")
+            cur.executemany(sql, params)
 
     def fetch_rows_by_primary_key_values(
         self, *, rows: domain.Rows, columns: typing.Optional[typing.Set[str]]
@@ -192,6 +196,7 @@ class PyodbcDynamicRepository(DynamicRepository):
         pk_col_names = {
             col.column_metadata.column_name
             for col in self._sql_adapter.primary_key_column_sql_adapters
+            if col.column_metadata.column_name in rows.column_names
         }
         param_indices = []
         non_pk_col_wrapped_names = []
@@ -263,6 +268,7 @@ class PyodbcDynamicRepository(DynamicRepository):
 
 def fetch_rows(con: pyodbc.Connection, sql: str) -> domain.Rows:
     with con.cursor() as cur:
+        print(f"Executing SQL:\n\t{sql}")
         result = cur.execute(sql).fetchall()
         column_names = [col[0] for col in cur.description]
         rows = [tuple(row) for row in result]
@@ -314,51 +320,3 @@ def compare_rows(
             value_columns=compare_cols,
         ),
     }
-
-
-# def get_changes(
-#     src_con_or_engine: typing.Union[pyodbc.Connection, sa.engine.Engine],
-#     dest_con_or_engine: typing.Union[pyodbc.Connection, sa.engine.Engine],
-#     src_sql_adapter: adapter.SqlTableAdapter,
-#     dest_sql_adapter: adapter.SqlTableAdapter,
-#     compare_cols: typing.List[str],
-# ) -> typing.Dict[
-#     str,
-#     typing.Dict[
-#         typing.Tuple[typing.Tuple[str, typing.Any], ...],
-#         typing.Tuple[typing.Tuple[str, typing.Any], ...],
-#     ],
-# ]:
-#     pk_cols = src_sql_adapter.table_metadata.primary_key_column_names
-#     src_rows = get_keys(
-#         sql_adapter=src_sql_adapter,
-#         con_or_engine=src_con_or_engine,
-#         additional_cols=compare_cols,
-#     )
-#     dest_rows = get_keys(
-#         sql_adapter=dest_sql_adapter,
-#         con_or_engine=dest_con_or_engine,
-#         additional_cols=compare_cols,
-#     )
-#     return compare_rows(
-#         pk_cols=pk_cols,
-#         compare_cols=compare_cols,
-#         src_rows=src_rows,
-#         dest_rows=dest_rows,
-#     )
-
-
-# def insert_rows(
-#     *,
-#     sql_adapter: adapter.SqlTableAdapter,
-#     con: pyodbc.Connection,
-#     rows: typing.List[typing.Dict[str, typing.Any]],
-#     fast_executemany: bool = True,
-# ) -> int:
-#     with con.cursor() as cur:
-#         cur.fast_executemany = fast_executemany
-#         columns = sorted(rows[0].keys())
-#         row_values = [tuple(v for k, v in sorted(row.items())) for row in rows]
-#         sql = sql_generator.insert_rows(sql_adapter=sql_adapter, columns=columns)
-#         cur.executemany(sql, row_values)
-#         return len(rows)

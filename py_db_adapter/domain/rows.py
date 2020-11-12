@@ -89,17 +89,14 @@ class Rows:
     def row_count(self) -> int:
         return len(self._rows)
 
-    # def subset(self, column_names: typing.List[str]) -> Rows:
-    #     col_indices = {
-    #         column_name: i
-    #         for i, column_name in enumerate(self._column_names)
-    #     }
+    # def subset(self, column_names: typing.Set[str]) -> Rows:
+    #     cols = sorted(column_names)
     #     rows = [
-    #         tuple(row[col_indices[col_name]] for col_name in column_names)
+    #         tuple(row[self.column_indices[col_name]] for col_name in cols)
     #         for row in self._rows
     #     ]
     #     return Rows(
-    #         column_names=column_names,
+    #         column_names=cols,
     #         rows=rows,
     #     )
 
