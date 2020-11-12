@@ -241,7 +241,8 @@ def compare_rows(
     src_rows: domain.Rows,
     dest_rows: domain.Rows,
 ) -> typing.Dict[str, domain.Rows]:
-    compare_cols = {col for col in src_rows.column_names if col not in key_cols}
+    common_cols = sorted(set(src_rows.column_names).intersection(set(dest_rows.column_names)))
+    compare_cols = {col for col in common_cols if col not in key_cols}
     src_hashes = src_rows.as_lookup_table(
         key_columns=key_cols, value_columns=compare_cols
     )
