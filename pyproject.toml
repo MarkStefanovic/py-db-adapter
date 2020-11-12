@@ -3,6 +3,7 @@ name = "py-db-adapter"
 version = "0.1.0"
 description = ""
 authors = ["Mark Stefanovic <markstefanovic@hotmail.com>"]
+include = ["py_db_adapter/py.typed"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
