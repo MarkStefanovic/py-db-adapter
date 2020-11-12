@@ -21,16 +21,7 @@ def backup_customer_sql_table_adapter(
 
 def test_insert_with_manual_pk_value(
     customer_sql_table_adapter: pda.SqlTableAdapter,
-):
-    # rows = [
-    #     {
-    #         "customer_id": 100,
-    #         "customer_first_name": "Mark",
-    #         "customer_last_name": "Stefanovic",
-    #         "date_added": datetime.datetime(2010, 1, 2, 3, 4, 5),
-    #         "date_updated": None,
-    #     }
-    # ]
+) -> None:
     with pyodbc.connect("DSN=pg_local") as con:
         rows = pda.Rows(
             column_names=[
@@ -65,7 +56,7 @@ def test_insert_with_auto_pk_value(
     pyodbc_postgres_con: pyodbc.Connection,
     customer_sql_table_adapter: pda.SqlTableAdapter,
     backup_customer_sql_table_adapter: pda.SqlTableAdapter,
-):
+) -> None:
     # rows = [
     #     {
     #         "customer_id": 100,
@@ -122,7 +113,7 @@ def test_insert_with_auto_pk_value(
         {"customer_id": 3},
         {"customer_id": 4},
     ]
-    pks = repo.fetch_rows_by_primary_key_values(pda.Rows.from_dicts(pks_to_fetch))
+    pks = repo.fetch_rows_by_primary_key_values(pda.Rows.from_dicts(pks_to_fetch))  # type: ignore
     print(f"{pks=!s}")
 
     backup_repo = pda.PyodbcDynamicRepository(

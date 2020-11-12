@@ -205,7 +205,7 @@ class PyodbcDynamicRepository(DynamicRepository):
             print(f"Executing SQL:\n\tsql:{sql}\n\tparams: {params}")
             cur.executemany(sql, params)
 
-    def upsert_table(self, source_repo: DynamicRepository):
+    def upsert_table(self, source_repo: DynamicRepository) -> None:
         key_cols = {
             col.column_metadata.column_name
             for col in self._sql_adapter.column_sql_adapters
@@ -214,7 +214,6 @@ class PyodbcDynamicRepository(DynamicRepository):
         changes = compare_rows(
             key_cols=key_cols, src_rows=source_repo.keys(), dest_rows=self.keys()
         )
-        print(f"{changes['added'].row_count}=")
         if changes["added"].row_count:
             new_rows = source_repo.fetch_rows_by_primary_key_values(rows=changes["added"])
             self.add(new_rows)
@@ -243,6 +242,7 @@ def compare_rows(
 ) -> typing.Dict[str, domain.Rows]:
     common_cols = sorted(set(src_rows.column_names).intersection(set(dest_rows.column_names)))
     compare_cols = {col for col in common_cols if col not in key_cols}
+    key_cols = {col for col in key_cols if col in common_cols}
     src_hashes = src_rows.as_lookup_table(
         key_columns=key_cols, value_columns=compare_cols
     )

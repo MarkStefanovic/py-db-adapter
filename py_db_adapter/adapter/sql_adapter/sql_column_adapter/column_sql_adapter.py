@@ -80,6 +80,3 @@ class ColumnSqlAdapter(abc.ABC, typing.Generic[D]):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}: {self.wrapped_column_name}>"
-
-
-AnyColumnSqlAdapter = ColumnSqlAdapter[D]

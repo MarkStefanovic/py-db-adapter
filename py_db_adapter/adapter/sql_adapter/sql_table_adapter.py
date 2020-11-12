@@ -31,7 +31,7 @@ class SqlTableAdapter(abc.ABC):
     @property
     def column_sql_adapters(
         self,
-    ) -> typing.List[sql_column_adapter.AnyColumnSqlAdapter]:
+    ) -> typing.List[sql_column_adapter.ColumnSqlAdapter[typing.Any]]:
         if self._column_sql_adapters is None:
             col_adapters = []
             for col in self._table.columns:
@@ -127,7 +127,7 @@ class SqlTableAdapter(abc.ABC):
         return self._max_float_literal_decimal_places or 5
 
     @property
-    def primary_key_column_sql_adapters(self) -> typing.List[sql_column_adapter.AnyColumnSqlAdapter]:
+    def primary_key_column_sql_adapters(self) -> typing.List[sql_column_adapter.ColumnSqlAdapter[typing.Any]]:
         return [col for col in self.column_sql_adapters if col.column_metadata.primary_key]
 
     @property

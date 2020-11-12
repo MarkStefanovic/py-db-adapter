@@ -65,8 +65,8 @@ class Rows:
     def as_lookup_table(
         self,
         *,
-        key_columns: typing.Collection[str],
-        value_columns: typing.Optional[typing.Collection[str]] = None,
+        key_columns: typing.Set[str],
+        value_columns: typing.Optional[typing.Set[str]] = None,
     ) -> typing.Dict[Row, Row]:
         pk_cols = sorted(set(key_columns))
         if value_columns:

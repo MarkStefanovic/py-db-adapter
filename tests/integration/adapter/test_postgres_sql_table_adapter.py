@@ -70,7 +70,7 @@ def test_postgres_float_column_sql_adapter_literal() -> None:
     assert actual == expected
 
 
-def test_create(employee_sql_table_adapter) -> None:
+def test_create(employee_sql_table_adapter: adapter.SqlTableAdapter) -> None:
     assert employee_sql_table_adapter.create == (
         "CREATE TABLE IF NOT EXISTS hr.employee (active BOOL NOT NULL, date_added "
         "TIMESTAMP NOT NULL, date_updated TIMESTAMP NULL, employee_dependents BIGINT NOT "
@@ -82,13 +82,13 @@ def test_create(employee_sql_table_adapter) -> None:
     )
 
 
-def test_drop(employee_sql_table_adapter) -> None:
+def test_drop(employee_sql_table_adapter: adapter.SqlTableAdapter) -> None:
     assert employee_sql_table_adapter.drop == "DROP TABLE IF EXISTS hr.employee"
 
 
-def test_row_count(employee_sql_table_adapter) -> None:
+def test_row_count(employee_sql_table_adapter: adapter.SqlTableAdapter) -> None:
     assert employee_sql_table_adapter.row_count == "SELECT COUNT(*) AS row_count FROM hr.employee"
 
 
-def test_truncate(employee_sql_table_adapter) -> None:
+def test_truncate(employee_sql_table_adapter: adapter.SqlTableAdapter) -> None:
     assert employee_sql_table_adapter.truncate == "TRUNCATE TABLE hr.employee"
