@@ -47,7 +47,7 @@ class DynamicRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def keys(self) -> domain.Rows:
+    def keys(self, /, include_change_tracking_cols: bool = True) -> domain.Rows:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -165,16 +165,20 @@ class PyodbcDynamicRepository(DynamicRepository):
                 column_names=select_col_names, rows=[tuple(row) for row in result]
             )
 
-    def keys(self) -> domain.Rows:
+    def keys(self, /, include_change_tracking_cols: bool = True) -> domain.Rows:
         pk_cols_csv = ", ".join(
             col.wrapped_column_name
             for col in self._sql_adapter.primary_key_column_sql_adapters
         )
-        change_cols_csv = ", ".join(
-            col.wrapped_column_name
-            for col in self._sql_adapter.column_sql_adapters
-            if col.column_metadata.column_name in self._change_tracking_columns
-        )
+        if include_change_tracking_cols:
+            change_cols_csv = ", ".join(
+                col.wrapped_column_name
+                for col in self._sql_adapter.column_sql_adapters
+                if col.column_metadata.column_name in self._change_tracking_columns
+            )
+        else:
+            change_cols_csv = ""
+
         if change_cols_csv:
             select_cols_csv = f"{pk_cols_csv}, {change_cols_csv}"
         else:
