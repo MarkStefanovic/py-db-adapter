@@ -634,6 +634,6 @@ class HiveSQLTableAdapter(sql_table_adapter.SqlTableAdapter):
 
     def wrap(self, obj_name: str) -> str:
         if " " in obj_name or obj_name in RESERVED_KEYWORDS:
-            return f'"{obj_name}"'
+            return f'`{obj_name}`'
         else:
             return obj_name
