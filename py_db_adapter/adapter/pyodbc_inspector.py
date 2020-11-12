@@ -57,8 +57,11 @@ def pyodbc_inspect_table(
 
     domain_cols = []
     pyodbc_cols = _inspect_cols(con=con, table_name=table_name, schema_name=schema_name)
-    pk_cols = _inspect_pks(con=con, table_name=table_name, schema_name=schema_name)
-    pk_col_names = {col.column_name for col in pk_cols}
+    if custom_pk_cols:
+        pk_col_names = custom_pk_cols
+    else:
+        pk_cols = _inspect_pks(con=con, table_name=table_name, schema_name=schema_name)
+        pk_col_names = {col.column_name for col in pk_cols}
     for col in pyodbc_cols:
         pk_col = col.column_name in pk_col_names
         if col.domain_data_type == domain.DataType.Bool:
