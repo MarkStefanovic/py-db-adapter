@@ -126,7 +126,7 @@ def test_insert_with_auto_pk_value(
         result = cur.execute("SELECT * FROM sales.customer2").fetchall()
         for row in result:
             print(row)
-    backup_repo.upsert_table(repo)
+    backup_repo.upsert_table(source_repo=repo)
     pyodbc_postgres_con.commit()
     print("sales.customer2 after upsert")
     with pyodbc_postgres_con.cursor() as cur:

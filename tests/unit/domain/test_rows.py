@@ -28,7 +28,7 @@ def test_as_dicts(dummy_rows: Rows) -> None:
 
 
 def test_as_lookup_table(dummy_rows: Rows) -> None:
-    assert dummy_rows.as_lookup_table(key_columns=set("name")) == {
+    assert dummy_rows.as_lookup_table(key_columns={"name"}, value_columns={"age"}) == {
         ("a",): (0,),
         ("b",): (1,),
         ("c",): (2,),
@@ -43,8 +43,8 @@ def test_as_lookup_table(dummy_rows: Rows) -> None:
 
 
 def test_from_lookup_table(dummy_rows: Rows) -> None:
-    lkp_table = dummy_rows.as_lookup_table(key_columns=set("name"))
+    lkp_table = dummy_rows.as_lookup_table(key_columns={"name"})
     actual = Rows.from_lookup_table(
-        lookup_table=lkp_table, key_columns=set("name"), value_columns=set("age")
+        lookup_table=lkp_table, key_columns={"name"}, value_columns={"age"}
     )
     assert actual == dummy_rows, f"Expected: {dummy_rows!s}\nActual: {actual!s}"
