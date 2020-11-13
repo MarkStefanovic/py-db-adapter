@@ -8,7 +8,7 @@ from py_db_adapter import domain, adapter
 
 __all__ = (
     "DynamicRepository",
-    "HivePyodbcDynamicRepository",
+    "HiveReadOnlyPyodbcDynamicRepository",
     "PyodbcDynamicRepository",
     "PostgresPyodbcDynamicRepository"
 )
@@ -43,6 +43,10 @@ class DynamicRepository(abc.ABC):
 
     @abc.abstractmethod
     def delete(self, /, rows: domain.Rows) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def drop(self) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -97,6 +101,10 @@ class PyodbcDynamicRepository(DynamicRepository):
             print(f"Executing SQL:\n\t{sql}\n\t{params=}")
             cur.executemany(sql, params)
 
+    def create(self) -> None:
+        with self._connection.cursor() as cur:
+            cur.execute(self.sql_adapter.create)
+
     def delete(self, /, rows: domain.Rows) -> None:
         pk_col_names = {
             col.column_metadata.column_name
@@ -113,6 +121,14 @@ class PyodbcDynamicRepository(DynamicRepository):
             params = rows.as_tuples()
             print(f"Executing SQL:\n\t{sql}\n\t{params=}")
             cur.executemany(sql, params)
+
+    def drop(self, /, cascade: bool = False) -> None:
+        with self._connection.cursor() as cur:
+            if cascade:
+                sql = "DROP TABLE IF EXISTS {self.sql_adapter.full_table_name} CASCADE"
+            else:
+                sql = "DROP TABLE IF EXISTS {self.sql_adapter.full_table_name}"
+            cur.execute(sql)
 
     def fetch_rows_by_primary_key_values(
         self, *, rows: domain.Rows, columns: typing.Optional[typing.Set[str]]
@@ -316,7 +332,7 @@ class PostgresPyodbcDynamicRepository(PyodbcDynamicRepository):
             return cur.execute(sql, params).fetchval()
 
 
-class HivePyodbcDynamicRepository(PyodbcDynamicRepository):
+class HiveReadOnlyPyodbcDynamicRepository(PyodbcDynamicRepository):
     def __init__(
         self,
         *,
@@ -331,6 +347,15 @@ class HivePyodbcDynamicRepository(PyodbcDynamicRepository):
             fast_executemany=False,
         )
 
+    def add(self, /, rows: domain.Rows) -> None:
+        raise NotImplementedError
+
+    def create(self) -> None:
+        raise NotImplementedError
+
+    def drop(self, /, cascade: bool = False) -> None:
+        raise NotImplementedError
+
     def row_count_estimate(self) -> int:
         """A faster row-count method than .row_count(), but is only an estimate"""
         with self._connection as con:
@@ -342,6 +367,19 @@ class HivePyodbcDynamicRepository(PyodbcDynamicRepository):
                         if num_rows_match:
                             return int(num_rows_match.group(1))
                 return self.row_count()
+
+    def update(self, /, rows: domain.Rows) -> None:
+        raise NotImplementedError
+
+    def upsert_table(
+        self,
+        *,
+        source_repo: DynamicRepository,
+        add: bool = True,
+        update: bool = True,
+        delete: bool = True,
+    ) -> None:
+        raise NotImplementedError
 
 
 def fetch_rows(con: pyodbc.Connection, sql: str) -> domain.Rows:
