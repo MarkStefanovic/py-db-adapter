@@ -348,13 +348,13 @@ class HiveReadOnlyPyodbcDynamicRepository(PyodbcDynamicRepository):
         )
 
     def add(self, /, rows: domain.Rows) -> None:
-        raise NotImplementedError
+        raise domain.exceptions.DatabaseIsReadOnly()
 
     def create(self) -> None:
-        raise NotImplementedError
+        raise domain.exceptions.DatabaseIsReadOnly()
 
     def drop(self, /, cascade: bool = False) -> None:
-        raise NotImplementedError
+        raise domain.exceptions.DatabaseIsReadOnly()
 
     def row_count_estimate(self) -> int:
         """A faster row-count method than .row_count(), but is only an estimate"""
@@ -369,7 +369,7 @@ class HiveReadOnlyPyodbcDynamicRepository(PyodbcDynamicRepository):
                 return self.row_count()
 
     def update(self, /, rows: domain.Rows) -> None:
-        raise NotImplementedError
+        raise domain.exceptions.DatabaseIsReadOnly()
 
     def upsert_table(
         self,
@@ -379,7 +379,7 @@ class HiveReadOnlyPyodbcDynamicRepository(PyodbcDynamicRepository):
         update: bool = True,
         delete: bool = True,
     ) -> None:
-        raise NotImplementedError
+        raise domain.exceptions.DatabaseIsReadOnly()
 
 
 def fetch_rows(con: pyodbc.Connection, sql: str) -> domain.Rows:
