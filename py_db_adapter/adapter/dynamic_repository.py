@@ -1,4 +1,5 @@
 import abc
+import re
 import typing
 
 import pyodbc
@@ -195,6 +196,15 @@ class PyodbcDynamicRepository(DynamicRepository):
             )
             # return [dict(zip(column_names, row)) for row in result]
 
+    def row_count(self):
+        """Get the number of rows in a table"""
+        sql = f"""
+            SELECT COUNT(*) 
+            FROM {self.sql_adapter.full_table_name}
+        """
+        with self._connection.cursor() as cur:
+            return cur.execute(sql).fetchval()
+
     def update(self, /, rows: domain.Rows) -> None:
         pk_col_names = {
             col.column_metadata.column_name
@@ -244,7 +254,7 @@ class PyodbcDynamicRepository(DynamicRepository):
             if col.column_metadata.primary_key
         }
         changes = compare_rows(
-            key_cols=key_cols, src_rows=source_repo.keys(), dest_rows=self.keys()
+            key_cols=key_cols, src_rows=source_repo.keys(True), dest_rows=self.keys(True)
         )
         src_column_names = {
             col.column_metadata.column_name
@@ -267,6 +277,65 @@ class PyodbcDynamicRepository(DynamicRepository):
                 rows=changes["updated"], columns=common_cols
             )
             self.update(updated_rows)
+
+
+class PostgresPyodbcDynamicRepository(PyodbcDynamicRepository):
+    def __init__(
+        self,
+        *,
+        connection: pyodbc.Connection,
+        sql_adapter: adapter.SqlTableAdapter,
+        change_tracking_columns: typing.Optional[typing.Iterable[str]] = None,
+    ):
+        super().__init__(
+            connection=connection,
+            sql_adapter=sql_adapter,
+            change_tracking_columns=change_tracking_columns,
+            fast_executemany=False,
+        )
+
+    def row_count_estimate(self) -> int:
+        """A faster row-count method than .row_count(), but is only an estimate"""
+        sql = """
+            SELECT
+                (reltuples / relpages) *
+                (pg_relation_size(?) / (current_setting('block_size')::INTEGER)) AS rows
+            FROM pg_class
+            WHERE
+                relname = ?;
+        """
+        with self._connection.cursor() as cur:
+            params = (self.sql_adapter.full_table_name, self.sql_adapter.table_metadata.table_name)
+            return cur.execute(sql, params).fetchval()
+
+
+class HivePyodbcDynamicRepository(PyodbcDynamicRepository):
+    def __init__(
+            self,
+            *,
+            connection: pyodbc.Connection,
+            sql_adapter: adapter.SqlTableAdapter,
+            change_tracking_columns: typing.Optional[typing.Iterable[str]] = None,
+    ):
+        super().__init__(
+            connection=connection,
+            sql_adapter=sql_adapter,
+            change_tracking_columns=change_tracking_columns,
+            fast_executemany=False,
+        )
+
+    def row_count_estimate(self) -> int:
+        """A faster row-count method than .row_count(), but is only an estimate"""
+        with self._connection as con:
+            with con.cursor() as cur:
+                result = cur.execute("DESCRIBE EXTENDED mv_scheduled_activities_rt")
+                for row in result.fetchall():
+                    if row[0] == "Detailed Table Information":
+                        table_type = re.search(".*, tableType:(\w+),.*", row[1]).group(1)
+                        if table_type == "VIRTUAL_VIEW":
+                            return self.row_count()
+                        else:
+                            return int(re.search(".*, numRows=(\d+), .*", row[1]).group(1))
 
 
 def fetch_rows(con: pyodbc.Connection, sql: str) -> domain.Rows:
