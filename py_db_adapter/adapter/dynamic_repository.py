@@ -8,7 +8,9 @@ from py_db_adapter import domain, adapter
 
 __all__ = (
     "DynamicRepository",
+    "HivePyodbcDynamicRepository",
     "PyodbcDynamicRepository",
+    "PostgresPyodbcDynamicRepository"
 )
 
 
