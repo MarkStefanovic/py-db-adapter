@@ -48,6 +48,16 @@ class Column(abc.ABC):
     def column_name(self) -> str:
         return self._column_name
 
+    def copy(self, new_schema_name: str, new_table_name: str) -> Column:
+        return self.__class__(
+            schema_name=new_schema_name,
+            table_name=new_table_name,
+            column_name=self._column_name,
+            nullable=self._nullable,
+            autoincrement=self._autoincrement,
+            primary_key=self._primary_key,
+        )
+
     @property
     @abc.abstractmethod
     def data_type(self) -> data_types.DataType:

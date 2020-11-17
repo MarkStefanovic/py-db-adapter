@@ -13,10 +13,10 @@ def test_postgres_sql_table_adapter_columns_sql_mapping(
         table_name="employee",
         schema_name="hr",
     )
-    sql_adapter = adapter.PostgreSQLTableAdapter(table=table)
+    sql_adapter = adapter.PostgreSQLAdapter(table=table)
     actual = {
         col._column.column_name: col.__class__.__name__
-        for col in sql_adapter.column_sql_adapters
+        for col in sql_adapter.columns
     }
     expected = {
         "active": "PostgresBooleanColumnSqlAdapter",
@@ -70,8 +70,8 @@ def test_postgres_float_column_sql_adapter_literal() -> None:
     assert actual == expected
 
 
-def test_create(employee_sql_table_adapter: adapter.SqlTableAdapter) -> None:
-    assert employee_sql_table_adapter.create == (
+def test_create(employee_sql_table_adapter: adapter.SqlAdapter) -> None:
+    assert employee_sql_table_adapter.definition == (
         "CREATE TABLE IF NOT EXISTS hr.employee (active BOOL NOT NULL, date_added "
         "TIMESTAMP NOT NULL, date_updated TIMESTAMP NULL, employee_dependents BIGINT NOT "
         "NULL, employee_dob DATE NOT NULL, employee_gender VARCHAR(255) NOT NULL, "
@@ -82,13 +82,13 @@ def test_create(employee_sql_table_adapter: adapter.SqlTableAdapter) -> None:
     )
 
 
-def test_drop(employee_sql_table_adapter: adapter.SqlTableAdapter) -> None:
+def test_drop(employee_sql_table_adapter: adapter.SqlAdapter) -> None:
     assert employee_sql_table_adapter.drop == "DROP TABLE IF EXISTS hr.employee"
 
 
-def test_row_count(employee_sql_table_adapter: adapter.SqlTableAdapter) -> None:
+def test_row_count(employee_sql_table_adapter: adapter.SqlAdapter) -> None:
     assert employee_sql_table_adapter.row_count == "SELECT COUNT(*) AS row_count FROM hr.employee"
 
 
-def test_truncate(employee_sql_table_adapter: adapter.SqlTableAdapter) -> None:
+def test_truncate(employee_sql_table_adapter: adapter.SqlAdapter) -> None:
     assert employee_sql_table_adapter.truncate == "TRUNCATE TABLE hr.employee"

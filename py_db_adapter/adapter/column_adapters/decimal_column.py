@@ -3,8 +3,7 @@ import decimal
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter.sql_adapter.sql_column_adapter import column_sql_adapter
-
+from py_db_adapter.adapter import column_adapter
 
 __all__ = (
     "DecimalColumnSqlAdapter",
@@ -13,7 +12,7 @@ __all__ = (
 
 
 class DecimalColumnSqlAdapter(
-    column_sql_adapter.ColumnSqlAdapter[decimal.Decimal], abc.ABC
+    column_adapter.ColumnSqlAdapter[decimal.Decimal], abc.ABC
 ):
     def __init__(
         self,

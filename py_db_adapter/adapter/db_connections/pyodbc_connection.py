@@ -1,0 +1,93 @@
+from __future__ import annotations
+
+import logging
+import typing
+
+import pyodbc
+
+from py_db_adapter import domain
+from py_db_adapter.adapter import db_connection
+from py_db_adapter.domain import exceptions
+
+__all__ = ("PyodbcConnection",)
+
+logger = logging.getLogger(__name__)
+
+
+class PyodbcConnection(db_connection.DbConnection):
+    def __init__(self, *, db_name: str, fast_executemany: bool, uri: str):
+        super().__init__()
+
+        self._db_name = db_name
+        self._fast_executemany = fast_executemany
+        self._uri = uri
+
+        self._con: typing.Optional[pyodbc.Connection] = None
+        self._cur: typing.Optional[pyodbc.Cursor] = None
+
+    def execute(
+        self,
+        sql: str,
+        params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
+    ) -> domain.Rows:
+        if self._con is None:
+            raise exceptions.DeveloperError(
+                "Attempted to run .execute() outside of a with block."
+            )
+        else:
+            logger.debug(f"Executing sql:\n\t{sql}\n\tparams={params}")
+            positional_params = [tuple(param.values()) for param in params]
+            if self._cur is None:
+                self._cur = self._con.cursor()
+                self._cur.fast_executemany = self._fast_executemany
+                logger.debug("Opened cursor.")
+
+            if params is None:
+                result = self._cur.execute(sql)
+            elif len(params) > 1:
+                result = self._cur.executemany(sql, positional_params)
+            else:
+                result = self._cur.execute(sql, positional_params[0])
+
+            if rows := result.fetchall():
+                column_names = [description[0] for description in self._cur.description]
+                return domain.Rows(
+                    column_names=column_names, rows=[tuple(row) for row in rows]
+                )
+            else:
+                return domain.Rows(column_names=[], rows=[])
+
+    def commit(self) -> None:
+        if self._con is None:
+            raise exceptions.DeveloperError(
+                "Attempted to run .execute() outside of a with block."
+            )
+        else:
+            self._con.commit()
+
+    def parameter_placeholder(self, /, column_name: str) -> str:
+        return "?"
+
+    def rollback(self) -> None:
+        if self._con is None:
+            raise exceptions.DeveloperError(
+                "Attempted to run .execute() outside of a with block."
+            )
+        else:
+            self._con.rollback()
+
+    def __enter__(self) -> PyodbcConnection:
+        if self._con is None:  # noqa
+            self._con = pyodbc.connect(self._uri)
+            logger.debug(f"Opened connection to {self._db_name}.")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._cur is not None:
+            self._cur.close()
+            self._cur = None
+            logger.debug("Closed cursor.")
+        if self._con is not None:
+            self._con.close()
+            self._con = None
+            logger.debug(f"Closed connection to {self._db_name}.")

@@ -1,28 +1,30 @@
 import datetime
+import os
 
 import pyodbc
 import pytest
 
 import py_db_adapter as pda
+import py_db_adapter.adapter.repositories.pyodbc_repository
 
 
 @pytest.fixture(scope="session")
 def backup_customer_sql_table_adapter(
     pyodbc_postgres_con: pyodbc.Connection,
-) -> pda.PostgreSQLTableAdapter:
+) -> pda.PostgreSQLAdapter:
     table = pda.pyodbc_inspect_table(
         con=pyodbc_postgres_con,
         table_name="customer2",
         schema_name="sales",
         custom_pk_cols=["customer_id"],
     )
-    return pda.PostgreSQLTableAdapter(table=table)
+    return pda.PostgreSQLAdapter(table=table)
 
 
 def test_insert_with_manual_pk_value(
-    customer_sql_table_adapter: pda.SqlTableAdapter,
+    customer_sql_table_adapter: pda.SqlAdapter,
 ) -> None:
-    with pyodbc.connect("DSN=pg_local") as con:
+    with pyodbc.connect(os.environ["PYODBC_URI"]) as con:
         rows = pda.Rows(
             column_names=[
                 "customer_id",
@@ -41,7 +43,7 @@ def test_insert_with_manual_pk_value(
                 ),
             ),
         )
-        repo = pda.PyodbcDynamicRepository(
+        repo = py_db_adapter.adapter.repositories.pyodbc_repository.PyodbcRepository(
             connection=con,
             sql_adapter=customer_sql_table_adapter,
             fast_executemany=False,
@@ -54,8 +56,8 @@ def test_insert_with_manual_pk_value(
 
 def test_insert_with_auto_pk_value(
     pyodbc_postgres_con: pyodbc.Connection,
-    customer_sql_table_adapter: pda.SqlTableAdapter,
-    backup_customer_sql_table_adapter: pda.SqlTableAdapter,
+    customer_sql_table_adapter: pda.SqlAdapter,
+    backup_customer_sql_table_adapter: pda.SqlAdapter,
 ) -> None:
     # rows = [
     #     {
@@ -75,7 +77,7 @@ def test_insert_with_auto_pk_value(
         ],
         rows=(("Mark", "Stefanovic", datetime.datetime(2010, 1, 2, 3, 4, 5), None),),
     )
-    repo = pda.PyodbcDynamicRepository(
+    repo = py_db_adapter.adapter.repositories.pyodbc_repository.PyodbcRepository(
         connection=pyodbc_postgres_con,
         sql_adapter=customer_sql_table_adapter,
         fast_executemany=False,  # fast_executemany doesn't work on PostgreSQL
@@ -117,7 +119,7 @@ def test_insert_with_auto_pk_value(
     pks = repo.fetch_rows_by_primary_key_values(rows=pk_rows, columns=None)
     print(f"{pks=!s}")
 
-    backup_repo = pda.PyodbcDynamicRepository(
+    backup_repo = py_db_adapter.adapter.repositories.pyodbc_repository.PyodbcRepository(
         connection=pyodbc_postgres_con,
         sql_adapter=backup_customer_sql_table_adapter,
         fast_executemany=False,  # fast_executemany doesn't work on PostgreSQL

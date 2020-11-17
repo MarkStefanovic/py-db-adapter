@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 
 from py_db_adapter.domain import column
@@ -45,6 +47,17 @@ class Table:
     @property
     def column_names(self) -> typing.Set[str]:
         return {col.column_name for col in self._columns}
+
+    def copy(self, new_schema_name: str, new_table_name: str) -> Table:
+        columns = [
+            col.copy(new_schema_name=new_schema_name, new_table_name=new_table_name)
+            for col in self._columns
+        ]
+        return Table(
+            schema_name=new_schema_name,
+            table_name=new_table_name,
+            columns=columns,
+        )
 
     @property
     def primary_key_column_names(self) -> typing.Set[str]:

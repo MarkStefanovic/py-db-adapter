@@ -49,25 +49,25 @@ def pyodbc_postgres_con() -> pyodbc.Connection:
 @pytest.fixture(scope="session")
 def employee_sql_table_adapter(
     pyodbc_postgres_con: pyodbc.Connection,
-) -> adapter.PostgreSQLTableAdapter:
+) -> adapter.PostgreSQLAdapter:
     table = adapter.pyodbc_inspect_table(
         con=pyodbc_postgres_con,
         table_name="employee",
         schema_name="hr",
     )
-    return adapter.PostgreSQLTableAdapter(table=table)
+    return adapter.PostgreSQLAdapter(table=table)
 
 
 @pytest.fixture(scope="session")
 def customer_sql_table_adapter(
     pyodbc_postgres_con: pyodbc.Connection,
-) -> adapter.PostgreSQLTableAdapter:
+) -> adapter.PostgreSQLAdapter:
     table = adapter.pyodbc_inspect_table(
         con=pyodbc_postgres_con,
         table_name="customer",
         schema_name="sales",
     )
-    return adapter.PostgreSQLTableAdapter(table=table)
+    return adapter.PostgreSQLAdapter(table=table)
 
 # if __name__ == "__main__":
 #     fp = pathlib.Path("./fixtures/hr.employee.sql")

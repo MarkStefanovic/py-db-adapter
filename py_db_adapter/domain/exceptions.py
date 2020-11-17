@@ -6,6 +6,11 @@ class PyDbAdapterException(Exception):
         super().__init__(message)
 
 
+class DeveloperError(PyDbAdapterException):
+    def __init__(self, /, message: str):
+        super().__init__(message)
+
+
 class MissingPrimaryKey(PyDbAdapterException):
     def __init__(self, schema_name: typing.Optional[str], table_name: str) -> None:
         full_table_name = f"{schema_name}.{table_name}" if schema_name else table_name
@@ -26,7 +31,7 @@ class InvalidCustomPrimaryKey(PyDbAdapterException):
         self.invalid_column_names = invalid_column_names
 
 
-class DatabaseIsReadOnly(PyDbAdapterException):
+class DatabaseIsReadOnly(DeveloperError):
     def __init__(self) -> None:
         super().__init__("The database is read only.")
 

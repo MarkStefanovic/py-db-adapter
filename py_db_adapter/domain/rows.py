@@ -34,6 +34,10 @@ class Rows:
     def column_indices(self) -> typing.Dict[str, int]:
         return {col_name: i for i, col_name in enumerate(self._column_names)}
 
+    @property
+    def is_empty(self) -> bool:
+        return not self._rows
+
     @classmethod
     def from_dicts(
         cls, /, rows: typing.List[typing.Dict[str, typing.Hashable]]
@@ -41,6 +45,9 @@ class Rows:
         column_names = sorted(rows[0].keys())
         new_rows = [tuple(v for _, v in sorted(row.items())) for row in rows]
         return Rows(column_names=column_names, rows=new_rows)
+
+    def first_value(self) -> typing.Any:
+        return self._rows[0][0]
 
     @classmethod
     def from_lookup_table(
