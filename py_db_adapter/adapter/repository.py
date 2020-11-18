@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import typing
 
-from py_db_adapter import domain
+from py_db_adapter import domain, adapter
 from py_db_adapter.adapter import sql_adapter, db_connection
 
 __all__ = ("Repository",)
@@ -32,24 +32,17 @@ class Repository:
     def add(self, /, rows: domain.Rows) -> None:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
-
-        col_name_csv = ",".join(
-            self._sql_adapter.wrap(col_name) for col_name in rows.column_names
-        )
-        dummy_csv = ",".join(
-            self._connection.parameter_placeholder(col_name)
-            for col_name in rows.column_names
-        )
-        sql = (
-            f"INSERT INTO {self.full_table_name} ({col_name_csv}) "
-            f"VALUES ({dummy_csv})"
-        )
-        params = rows.as_dicts()
-        logger.debug(f"Executing SQL:\n\t{sql}\n\t{params=}")
-        self._connection.execute(sql, params=params)
+        else:
+            sql = self._sql_adapter.add_rows(
+                parameter_placeholder=self._connection.parameter_placeholder,
+                rows=rows,
+            )
+            params = rows.as_dicts()
+            self._connection.execute(sql, params=params)
 
     def all(self) -> domain.Rows:
-        return self._connection.execute(sql=self._sql_adapter.select_all(self._table))
+        sql = self._sql_adapter.select_all(schema_name=self.table.schema_name, table_name=self.table.table_name)
+        return self._connection.execute(sql)
 
     @property
     def change_tracking_columns(self) -> typing.Set[str]:
@@ -63,22 +56,27 @@ class Repository:
     def delete(self, /, rows: domain.Rows) -> None:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
-
-        where_clause = " AND ".join(
-            f"{self._sql_adapter.wrap(col_name)} = {self._connection.parameter_placeholder(col_name)}"
-            for col_name in rows.column_names
-            if col_name in self._table.primary_key_column_names
-        )
-        sql = f"DELETE FROM {self.full_table_name} " f"WHERE {where_clause}"
-        params = rows.as_dicts()
-        logger.debug(f"Executing SQL:\n\t{sql}\n\t{params=}")
-        self._connection.execute(sql, params)
+        else:
+            sql = self._sql_adapter.delete(
+                schema_name=self._table.schema_name,
+                table_name=self._table.table_name,
+                pk_cols=self._table.primary_key_column_names,
+                parameter_placeholder=self._connection.parameter_placeholder,
+                row_cols=rows.column_names,
+            )
+            params = rows.as_dicts()
+            self._connection.execute(sql, params)
 
     def drop(self, /, cascade: bool = False) -> None:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
-
-        self._connection.execute(self._sql_adapter.drop(self._table, cascade=cascade))
+        else:
+            sql = self._sql_adapter.drop(
+                schema_name=self._table.schema_name,
+                table_name=self._table.table_name,
+                cascade=cascade,
+            )
+            self._connection.execute(sql)
 
     @property
     def full_table_name(self):
@@ -137,38 +135,33 @@ class Repository:
         return self._connection.execute(sql)
 
     def keys(self, /, include_change_tracking_cols: bool = True) -> domain.Rows:
-        pk_cols_csv = ", ".join(
-            self._sql_adapter.wrap(col)
-            for col in sorted(self._table.primary_key_column_names)
-        )
         if include_change_tracking_cols:
-            change_cols_csv = ", ".join(
-                col.wrapped_column_name
-                for col in self._sql_adapter.columns
-                if col.column_metadata.column_name in self._change_tracking_columns
+            sql = self._sql_adapter.select_keys(
+                pk_cols=self._table.primary_key_column_names,
+                change_tracking_cols=set(self._change_tracking_columns),
+                include_change_tracking_cols=include_change_tracking_cols,
             )
         else:
-            change_cols_csv = ""
-
-        if change_cols_csv:
-            select_cols_csv = f"{pk_cols_csv}, {change_cols_csv}"
-        else:
-            select_cols_csv = pk_cols_csv
-        sql = (
-            f"SELECT DISTINCT {select_cols_csv} "
-            f"FROM {self.full_table_name}"
-        )
+            sql = self._sql_adapter.select_keys(
+                pk_cols=self._table.primary_key_column_names,
+                change_tracking_cols=set(),
+                include_change_tracking_cols=include_change_tracking_cols,
+            )
         return self._connection.execute(sql)
 
     def row_count(self) -> int:
         """Get the number of rows in a table"""
         return self._connection.execute(
-            self._sql_adapter.row_count(self._table)
+            self._sql_adapter.row_count(schema_name=self.schema_name, table_name=self.table_name)
         ).first_value()
 
     @property
     def table(self) -> domain.Table:
         return self._table
+
+    @property
+    def table_name(self) -> str:
+        return self._
 
     def update(self, /, rows: domain.Rows) -> None:
         if self._read_only:
@@ -205,3 +198,36 @@ class Repository:
         )
         params = rows.as_dicts()
         return self._connection.execute(sql, params)
+
+    def upsert_rows(
+        self,
+        *,
+        rows: domain.Rows,
+        add: bool = True,
+        update: bool = True,
+        delete: bool = True,
+    ) -> None:
+        src_keys = rows.subset(
+            key_columns=common_key_cols,
+            value_columns: typing.Optional[typing.Set[str]] = None,
+        )
+        changes = domain.compare_rows(
+            key_cols=self.table.primary_key_column_names,
+            src_rows=src_keys,
+            dest_rows=self.keys(True),
+        )
+        common_cols = self.table.column_names.intersection(
+            rows.column_names
+        )
+        if changes["added"].row_count and add:
+            new_rows = self.fetch_rows_by_primary_key_values(
+                rows=changes["added"], columns=common_cols
+            )
+            self.add(new_rows)
+        if changes["deleted"].row_count and delete:
+            self.delete(changes["deleted"])
+        if changes["updated"].row_count and update:
+            updated_rows = self.fetch_rows_by_primary_key_values(
+                rows=changes["updated"], columns=common_cols
+            )
+            self.update(updated_rows)

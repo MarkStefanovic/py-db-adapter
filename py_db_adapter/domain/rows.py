@@ -22,6 +22,11 @@ class Rows:
         self._column_names = list(column_names)
         self._rows = list(rows)
 
+    def chunks(self, /, size: int) -> typing.Generator[Rows, typing.Any, None]:
+        batches = (self._rows[i : i + size] for i in range(0, len(self._rows), size))
+        for batch in batches:
+            yield Rows(column_names=self._column_names, rows=batch,)
+
     def column(self, /, column_name: str) -> typing.List[typing.Hashable]:
         col_index = self.column_indices[column_name]
         return [row[col_index] for row in self._rows]
