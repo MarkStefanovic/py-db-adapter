@@ -1,1 +1,1 @@
-from py_db_adapter.service.db_adapter import *
+from py_db_adapter.service.db_service import *

@@ -376,7 +376,7 @@ def _inspect_cols(
                 type_name=col.type_name,
                 typmod=(col.typmod if hasattr(col, "typmod") else None),
             )
-            for col in cur.columns(table_name, schema=schema_name)
+            for col in cur.column_adapters(table_name, schema=schema_name)
         ]
 
 

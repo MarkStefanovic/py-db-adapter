@@ -1,5 +1,4 @@
 from py_db_adapter.adapter.db_connection import *
-from py_db_adapter.adapter.sql_formatter import *
 from py_db_adapter.adapter.column_adapter import *
 from py_db_adapter.adapter.column_adapters import *
 from py_db_adapter.adapter.sql_adapter import *
@@ -7,4 +6,4 @@ from py_db_adapter.adapter.sql_adapters import *
 from py_db_adapter.adapter.repository import *
 from py_db_adapter.adapter.pyodbc_inspector import *
 from py_db_adapter.adapter.sqlalchemy_inspector import *
-from py_db_adapter.adapter.db import *
+from py_db_adapter.adapter.db_adapter import *

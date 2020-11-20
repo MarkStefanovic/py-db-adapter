@@ -3,7 +3,8 @@ import functools
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import sql_formatter, column_adapters, column_adapter
+from py_db_adapter.adapter import column_adapters, column_adapter
+from py_db_adapter.domain import sql_formatter
 
 __all__ = ("SqlAdapter",)
 
@@ -33,27 +34,12 @@ class SqlAdapter(abc.ABC):
         raise NotImplementedError
 
     @functools.cache
-    def columns(
+    def column_adapters(
         self, /, table: domain.Table
     ) -> typing.List[column_adapter.ColumnSqlAdapter[typing.Any]]:
         col_adapters = []
         for col in table.columns:
-            if isinstance(col, domain.BooleanColumn):
-                adapter = self.create_boolean_column(col)
-            elif isinstance(col, domain.DateColumn):
-                adapter = self.create_date_column(col)  # type: ignore
-            elif isinstance(col, domain.DateTimeColumn):
-                adapter = self.create_datetime_column(col)  # type: ignore
-            elif isinstance(col, domain.DecimalColumn):
-                adapter = self.create_decimal_column(col)  # type: ignore
-            elif isinstance(col, domain.FloatColumn):
-                adapter = self.create_float_column(col)  # type: ignore
-            elif isinstance(col, domain.IntegerColumn):
-                adapter = self.create_integer_column(col)  # type: ignore
-            elif isinstance(col, domain.TextColumn):
-                adapter = self.create_text_column(col)  # type: ignore
-            else:
-                raise ValueError(f"Unrecognized col.data_type: {col.data_type!r}")
+            adapter = self._map_column_to_adapter(col)
             col_adapters.append(adapter)
 
         return sorted(
@@ -100,11 +86,11 @@ class SqlAdapter(abc.ABC):
         pk_col_csv = ", ".join(
             self.wrap(col) for col in sorted(table.primary_key_column_names)
         )
-        col_csv = ", ".join(col.definition for col in self.columns(table))
+        col_csv = ", ".join(col.definition for col in self.column_adapters(table))
         full_table_name = self.full_table_name(
             schema_name=table.schema_name, table_name=table.table_name
         )
-        return sql_formatter.standardize_sql(
+        return (
             f"""CREATE TABLE {full_table_name} (
                 {col_csv}
             ,   PRIMARY KEY ({pk_col_csv})
@@ -135,61 +121,37 @@ class SqlAdapter(abc.ABC):
         *,
         schema_name: typing.Optional[str],
         table_name: str,
-        cascade: bool = False,
     ) -> str:
         full_table_name = self.full_table_name(
             schema_name=schema_name, table_name=table_name
         )
-        if cascade:
-            return f"DROP TABLE {full_table_name} CASCADE"
-        else:
-            return f"DROP TABLE {full_table_name}"
+        return f"DROP TABLE {full_table_name}"
 
     def fetch_rows_by_primary_key_values(
         self,
         *,
-        cols: typing.Optional[typing.Set[column_adapter.ColumnSqlAdapter[typing.Any]]],
+        schema_name: typing.Optional[str],
+        table_name: str,
         rows: domain.Rows,
+        pk_cols: typing.Set[domain.Column],
+        select_cols: typing.Optional[typing.Set[str]],
     ) -> str:
-        pk_cols = sorted(col for col in cols if col.column_metadata.primary_key)
-        if len(pk_cols) == 1:
-            pk_col: column_adapter.ColumnSqlAdapter[typing.Any] = pk_cols[0]
-            wrapped_pk_col_name = pk_col.wrapped_column_name
-            pk_values = rows.column(pk_col.column_metadata.column_name)
-            pk_values_csv = ",".join(pk_col.literal(v) for v in pk_values)
-            where_clause = f"{wrapped_pk_col_name} IN ({pk_values_csv})"
-        else:
-            wrapped_pk_col_names = {}
-            for col_name in rows.column_names:
-                if col_name in pk_cols:
-                    wrapped_col_name = self.wrap(col_name)
-                    wrapped_pk_col_names[wrapped_col_name] = rows.column_indices[
-                        col_name
-                    ]
-            predicates = []
-            for row in rows.as_tuples():
-                predicate = " AND ".join(
-                    f"{col_name} = {row[ix]}"
-                    for col_name, ix in wrapped_pk_col_names.items()
-                )
-                predicates.append(predicate)
-            where_clause = " OR ".join(f"({predicate})" for predicate in predicates)
+        where_clause = self._where_clause(rows=rows, pk_cols=pk_cols)
 
-        if cols:
-            select_col_names = [
-                col.wrapped_column_name
-                for col in sorted(cols, key=lambda c: c.column_metadata.column_name)
-                if col in columns
-            ]
+        if select_cols:
+            select_col_names = [self.wrap(col) for col in sorted(select_cols)]
+            select_clause = "SELECT " + ", ".join(select_col_names)
         else:
-            select_col_names = [
-                col.wrapped_column_name for col in cols
-            ]
+            select_clause = "SELECT *"
 
-        select_cols_csv = ", ".join(select_col_names)
-        sql = (
-            f"SELECT {select_cols_csv} "
-            f"FROM {self.full_table_name} "
+        full_table_name = self.full_table_name(
+            schema_name=schema_name,
+            table_name=table_name,
+        )
+
+        return (
+            f"SELECT {select_clause} "
+            f"FROM {full_table_name} "
             f"WHERE {where_clause}"
         )
 
@@ -201,6 +163,26 @@ class SqlAdapter(abc.ABC):
         else:
             return f"{self.wrap(schema_name)}.{self.wrap(table_name)}"
 
+    def _map_column_to_adapter(
+        self, /, col: domain.Column
+    ) -> column_adapter.ColumnSqlAdapter[typing.Any]:
+        if isinstance(col, domain.BooleanColumn):
+            return self.create_boolean_column(col)
+        elif isinstance(col, domain.DateColumn):
+            return self.create_date_column(col)  # type: ignore
+        elif isinstance(col, domain.DateTimeColumn):
+            return self.create_datetime_column(col)  # type: ignore
+        elif isinstance(col, domain.DecimalColumn):
+            return self.create_decimal_column(col)  # type: ignore
+        elif isinstance(col, domain.FloatColumn):
+            return self.create_float_column(col)  # type: ignore
+        elif isinstance(col, domain.IntegerColumn):
+            return self.create_integer_column(col)  # type: ignore
+        elif isinstance(col, domain.TextColumn):
+            return self.create_text_column(col)  # type: ignore
+        else:
+            raise ValueError(f"Unrecognized col.data_type: {col.data_type!r}")
+
     @property
     def max_float_literal_decimal_places(self) -> int:
         return self._max_float_literal_decimal_places or 5
@@ -208,7 +190,11 @@ class SqlAdapter(abc.ABC):
     def primary_key_columns(
         self, /, table: domain.Table
     ) -> typing.List[column_adapter.ColumnSqlAdapter[typing.Any]]:
-        return [col for col in self.columns(table) if col.column_metadata.primary_key]
+        return [
+            col
+            for col in self.column_adapters(table)
+            if col.column_metadata.primary_key
+        ]
 
     def row_count(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
         full_table_name = self.full_table_name(
@@ -233,7 +219,7 @@ class SqlAdapter(abc.ABC):
         if include_change_tracking_cols:
             change_cols_csv = ",".join(
                 col.wrapped_column_name
-                for col in self.columns
+                for col in self.column_adapters
                 if col.column_metadata.column_name in change_tracking_cols
             )
         else:
@@ -256,6 +242,74 @@ class SqlAdapter(abc.ABC):
             schema_name=schema_name, table_name=table_name
         )
         return f"DELETE FROM {full_table_name}"
+
+    def update(
+        self,
+        *,
+        schema_name: typing.Optional[str],
+        table_name: str,
+        pk_cols: typing.Set[domain.Column],
+        rows: domain.Rows,
+    ) -> str:
+        where_clause = self._where_clause(rows=rows, pk_cols=pk_cols)
+        set_clause = ", ".join(
+            f"{col_name} = {self._db.connection.parameter_placeholder(col_name)}"
+            for col_name in non_pk_col_wrapped_names
+        )
+        pk_col_wrapped_names = []
+        for col_name in rows.column_names:
+            if col_name in self._table.primary_key_column_names:
+                wrapped_name = self._db.sql_adapter.wrap(col_name)
+                pk_col_wrapped_names.append(wrapped_name)
+                row_col_index = rows.column_indices[col_name]
+                param_indices.append(row_col_index)
+        where_clause = " AND ".join(
+            f"{col_name} = {self._connection.parameter_placeholder(col_name)}"
+            for col_name in pk_col_wrapped_names
+        )
+
+        full_table_name = self.full_table_name(
+            schema_name=schema_name, table_name=table_name
+        )
+
+        return f"UPDATE {full_table_name} " f"SET {set_clause} " f"WHERE {where_clause}"
+
+    def _where_clause(self, *, rows: domain.Rows, pk_cols: typing.Set[domain.Column]):
+        sorted_pk_cols = sorted(pk_cols, key=lambda c: c.column_name)
+        if len(pk_cols) == 1:
+            pk_col = sorted_pk_cols[0]
+            pk_col_adapter = self._map_column_to_adapter(pk_col)
+            wrapped_pk_col_name = pk_col_adapter.wrapped_column_name
+            pk_values = rows.column(pk_col_adapter.column_metadata.column_name)
+            pk_values_csv = ",".join(pk_col_adapter.literal(v) for v in pk_values)
+            return f"{wrapped_pk_col_name} IN ({pk_values_csv})"
+        else:
+            pk_col_adapters = sorted(
+                (self._map_column_to_adapter(col) for col in pk_cols),
+                key=lambda c: c.column_metadata.column_name,
+            )
+
+            row_identifiers: typing.List[typing.Dict[str, typing.Any]] = []
+            for row in rows.as_dicts():
+                row_identifier: typing.Dict[str, typing.Any] = {}
+                for col_adapter in pk_col_adapters:
+                    col_name = col_adapter.column_metadata.column_name
+                    row_identifier[
+                        col_adapter.wrapped_column_name
+                    ] = col_adapter.literal(row[col_name])
+                row_identifiers.append(row_identifier)
+
+            row_predicates: typing.List[str] = []
+            for row_identifier in row_identifiers:
+                row_predicate = " AND ".join(
+                    f"{wrapped_col_name} = {literal_val}"
+                    for wrapped_col_name, literal_val in row_identifier.items()
+                )
+                row_predicates.append(row_predicate)
+
+            return " OR ".join(
+                f"({row_predicate})" for row_predicate in row_predicates
+            )
 
     @abc.abstractmethod
     def wrap(self, obj_name: str) -> str:

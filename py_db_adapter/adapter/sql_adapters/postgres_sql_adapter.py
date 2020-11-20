@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import sql_formatter, sql_adapter, column_adapters
+from py_db_adapter.adapter import sql_adapter, column_adapters
 
 __all__ = (
     "PostgreSQLAdapter",

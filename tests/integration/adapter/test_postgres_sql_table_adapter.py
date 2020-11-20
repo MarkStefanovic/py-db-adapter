@@ -16,7 +16,7 @@ def test_postgres_sql_table_adapter_columns_sql_mapping(
     sql_adapter = adapter.PostgreSQLAdapter(table=table)
     actual = {
         col._column.column_name: col.__class__.__name__
-        for col in sql_adapter.columns
+        for col in sql_adapter.column_adapters
     }
     expected = {
         "active": "PostgresBooleanColumnSqlAdapter",

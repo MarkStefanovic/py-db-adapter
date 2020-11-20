@@ -30,12 +30,13 @@ class PyodbcConnection(db_connection.DbConnection):
         sql: str,
         params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
     ) -> domain.Rows:
+        std_sql = domain.standardize_sql(sql)
         if self._con is None:
             raise exceptions.DeveloperError(
                 "Attempted to run .execute() outside of a with block."
             )
         else:
-            logger.debug(f"Executing sql:\n\t{sql}\n\tparams={params}")
+            logger.debug(f"Executing sql:\n\t{std_sql}\n\tparams={params}")
             positional_params = [tuple(param.values()) for param in params]
             if self._cur is None:
                 self._cur = self._con.cursor()
@@ -43,11 +44,11 @@ class PyodbcConnection(db_connection.DbConnection):
                 logger.debug("Opened cursor.")
 
             if params is None:
-                result = self._cur.execute(sql)
+                result = self._cur.execute(std_sql)
             elif len(params) > 1:
-                result = self._cur.executemany(sql, positional_params)
+                result = self._cur.executemany(std_sql, positional_params)
             else:
-                result = self._cur.execute(sql, positional_params[0])
+                result = self._cur.execute(std_sql, positional_params[0])
 
             if rows := result.fetchall():
                 column_names = [description[0] for description in self._cur.description]
@@ -64,6 +65,10 @@ class PyodbcConnection(db_connection.DbConnection):
             )
         else:
             self._con.commit()
+
+    @property
+    def handle(self) -> pyodbc.Connection:
+        return self._con
 
     def parameter_placeholder(self, /, column_name: str) -> str:
         return "?"
