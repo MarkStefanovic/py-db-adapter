@@ -5,7 +5,6 @@ from py_db_adapter.adapter import (
     db_adapter,
     db_connection,
     db_connections,
-    sql_adapter,
     sql_adapters,
 )
 
@@ -17,13 +16,10 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
         self,
         *,
         con: db_connections.PyodbcConnection,
-        postgres_sql_adapter: typing.Optional[sql_adapters.PostgreSQLAdapter] = None,
+        postgres_sql_adapter: sql_adapters.PostgreSQLAdapter = sql_adapters.PostgreSQLAdapter(),
     ):
         self._con = con
-        if sql_adapter:
-            self._sql_adapter = postgres_sql_adapter
-        else:
-            self._sql_adapter = sql_adapters.PostgreSQLAdapter()
+        self._sql_adapter = postgres_sql_adapter
 
     @property
     def connection(self) -> db_connection.DbConnection:
@@ -49,13 +45,13 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
                 relname = '{table_name}'
         """
         result = self.connection.execute(sql)
-        if result.is_empty:
+        if result is None or result.is_empty:
             return None
         else:
             return result.first_value()
 
     @property
-    def sql_adapter(self) -> sql_adapter.SqlAdapter:
+    def sql_adapter(self) -> sql_adapters.PostgreSQLAdapter:
         return self._sql_adapter
 
     def table_exists(

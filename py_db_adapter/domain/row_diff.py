@@ -1,8 +1,7 @@
 import logging
 import typing
 
-from py_db_adapter import domain
-from py_db_adapter.domain import rows
+from py_db_adapter.domain import exceptions, rows
 
 __all__ = ("RowDiff",)
 
@@ -81,27 +80,27 @@ def compare_rows(
     src_key_cols = key_cols & src_cols
     dest_key_cols = dest_cols & dest_cols
     if not common_key_cols:
-        raise domain.exceptions.NoCommonKeyColumns(
+        raise exceptions.NoCommonKeyColumns(
             src_key_cols=src_key_cols, dest_key_cols=dest_key_cols
         )
 
     if not ignore_missing_key_cols:
         if key_cols - src_key_cols:
-            raise domain.exceptions.MissingKeyColumns(
+            raise exceptions.MissingKeyColumns(
                 actual_key_cols=src_key_cols, expected_key_cols=key_cols
             )
         if key_cols - dest_key_cols:
-            raise domain.exceptions.MissingKeyColumns(
+            raise exceptions.MissingKeyColumns(
                 actual_key_cols=src_key_cols, expected_key_cols=key_cols
             )
 
     if not ignore_extra_key_cols:
         if src_key_cols - key_cols:
-            raise domain.exceptions.ExtraKeyColumns(
+            raise exceptions.ExtraKeyColumns(
                 actual_key_cols=src_key_cols, expected_key_cols=key_cols
             )
         if dest_key_cols - key_cols:
-            raise domain.exceptions.ExtraKeyColumns(
+            raise exceptions.ExtraKeyColumns(
                 actual_key_cols=src_key_cols, expected_key_cols=key_cols
             )
 

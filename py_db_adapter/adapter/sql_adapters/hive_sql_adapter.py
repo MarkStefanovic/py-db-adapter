@@ -549,7 +549,7 @@ RESERVED_KEYWORDS = (
 
 
 class HiveSQLAdapter(sql_adapter.SqlAdapter):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(5)
 
     def create_boolean_column(
@@ -603,10 +603,12 @@ class HiveSQLAdapter(sql_adapter.SqlAdapter):
             column=column, wrapper=self.wrap
         )
 
-    def drop(self, /, table: domain.Table, *, cascade: bool = False) -> str:
+    def drop(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
         raise NotImplementedError
 
-    def table_exists(self, schema_name: typing.Optional[str], table_name: str) -> bool:
+    def table_exists(
+        self, *, schema_name: typing.Optional[str], table_name: str
+    ) -> str:
         # TODO
         raise NotImplementedError
 

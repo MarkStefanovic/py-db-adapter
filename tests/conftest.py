@@ -8,7 +8,7 @@ import pytest
 import sqlalchemy as sa
 import typing
 
-from py_db_adapter import adapter
+from py_db_adapter import domain, adapter
 
 dotenv.load_dotenv(dotenv.find_dotenv())
 
@@ -18,7 +18,7 @@ def read_sql(fp: pathlib.Path, /) -> typing.List[str]:
         return [
             sql
             for stmt in fh.read().split(";")
-            if (sql := adapter.standardize_sql(stmt))
+            if (sql := domain.standardize_sql(stmt))
         ]
 
 

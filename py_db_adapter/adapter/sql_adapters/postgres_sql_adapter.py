@@ -458,7 +458,7 @@ POSTGRES_RESERVED_KEYWORDS = {
 
 
 class PostgreSQLAdapter(sql_adapter.SqlAdapter):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(max_float_literal_decimal_places=5)
 
     def create_boolean_column(

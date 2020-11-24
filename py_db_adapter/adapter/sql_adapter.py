@@ -20,7 +20,9 @@ class SqlAdapter(abc.ABC):
         dummy_csv = ",".join(
             parameter_placeholder(col_name) for col_name in rows.column_names
         )
-        return f"INSERT INTO {self.full_table_name} ({col_name_csv}) VALUES ({dummy_csv})"
+        return (
+            f"INSERT INTO {self.full_table_name} ({col_name_csv}) VALUES ({dummy_csv})"
+        )
 
     @abc.abstractmethod
     def create_boolean_column(
@@ -70,7 +72,7 @@ class SqlAdapter(abc.ABC):
         )
         adapters = sorted(
             (self._map_column_to_adapter(col) for col in table.columns),
-            key=lambda c: c.column_name,
+            key=lambda c: c.column_metadata.column_name,
         )
         col_csv = ", ".join(col.definition for col in adapters)
         full_table_name = self.full_table_name(
@@ -146,17 +148,17 @@ class SqlAdapter(abc.ABC):
         if isinstance(col, domain.BooleanColumn):
             return self.create_boolean_column(col)
         elif isinstance(col, domain.DateColumn):
-            return self.create_date_column(col)  # type: ignore
+            return self.create_date_column(col)
         elif isinstance(col, domain.DateTimeColumn):
-            return self.create_datetime_column(col)  # type: ignore
+            return self.create_datetime_column(col)
         elif isinstance(col, domain.DecimalColumn):
-            return self.create_decimal_column(col)  # type: ignore
+            return self.create_decimal_column(col)
         elif isinstance(col, domain.FloatColumn):
-            return self.create_float_column(col)  # type: ignore
+            return self.create_float_column(col)
         elif isinstance(col, domain.IntegerColumn):
-            return self.create_integer_column(col)  # type: ignore
+            return self.create_integer_column(col)
         elif isinstance(col, domain.TextColumn):
-            return self.create_text_column(col)  # type: ignore
+            return self.create_text_column(col)
         else:
             raise ValueError(f"Unrecognized col.data_type: {col.data_type!r}")
 
@@ -245,7 +247,9 @@ class SqlAdapter(abc.ABC):
         )
         return f"UPDATE {full_table_name} SET {set_clause} WHERE {where_clause}"
 
-    def _where_clause(self, *, rows: domain.Rows, pk_cols: typing.Set[domain.Column]):
+    def _where_clause(
+        self, *, rows: domain.Rows, pk_cols: typing.Set[domain.Column]
+    ) -> str:
         # sourcery skip: remove-unnecessary-else, swap-if-else-branches
         if len(pk_cols) == 1:
             sorted_pk_cols = sorted(pk_cols, key=lambda c: c.column_name)

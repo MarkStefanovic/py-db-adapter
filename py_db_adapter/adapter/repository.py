@@ -48,13 +48,20 @@ class Repository:
             table_name=self.table.table_name,
             columns=columns,
         )
-        return self._db.connection.execute(sql)
+        result = self._db.connection.execute(sql)
+        if result is None:
+            return domain.Rows(
+                column_names=columns or sorted(self._table.column_names),
+                rows=[],
+            )
+        else:
+            return result
 
     def create(self) -> None:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
 
-        return self._db.connection.execute(self._db.sql_adapter.definition(self._table))
+        self._db.connection.execute(self._db.sql_adapter.definition(self._table))
 
     def delete(self, /, rows: domain.Rows) -> None:
         if self._read_only:
@@ -82,7 +89,7 @@ class Repository:
         self._db.connection.execute(sql)
 
     @property
-    def full_table_name(self):
+    def full_table_name(self) -> str:
         return self._db.sql_adapter.full_table_name(
             schema_name=self._table.schema_name, table_name=self._table.table_name
         )
@@ -104,36 +111,48 @@ class Repository:
             )
             params = batch.as_dicts()
             row_batch = self._db.connection.execute(sql, params=params)
-            batches.append(row_batch)
+            if row_batch:
+                batches.append(row_batch)
         return domain.Rows.concat(batches)
 
     @property
     def _pk_cols(self) -> typing.Set[domain.Column]:
         return {col for col in self._table.columns if col.primary_key}
 
-    # def keys(self, /, include_change_tracking_cols: bool = True) -> domain.Rows:
-    #     if include_change_tracking_cols:
-    #         sql = self._db.sql_adapter.select_keys(
-    #             pk_cols=self._table.primary_key_column_names,
-    #             change_tracking_cols=set(self._change_tracking_columns),
-    #             include_change_tracking_cols=include_change_tracking_cols,
-    #         )
-    #     else:
-    #         sql = self._db.sql_adapter.select_keys(
-    #             pk_cols=self._table.primary_key_column_names,
-    #             change_tracking_cols=set(),
-    #             include_change_tracking_cols=include_change_tracking_cols,
-    #         )
-    #     return self._db.connection.execute(sql)
+    def keys(self, /, include_change_tracking_cols: bool = True) -> domain.Rows:
+        if include_change_tracking_cols:
+            sql = self._db.sql_adapter.select_keys(
+                pk_cols=self._table.primary_key_column_names,
+                change_tracking_cols=set(self._change_tracking_columns),
+                include_change_tracking_cols=include_change_tracking_cols,
+            )
+        else:
+            sql = self._db.sql_adapter.select_keys(
+                pk_cols=self._table.primary_key_column_names,
+                change_tracking_cols=set(),
+                include_change_tracking_cols=include_change_tracking_cols,
+            )
+        result = self._db.connection.execute(sql)
+        if result is None:
+            return domain.Rows(
+                column_names=sorted(self._table.primary_key_column_names | set(self._change_tracking_columns)),
+                rows=[],
+            )
+        else:
+            return result
 
-    def row_count(self) -> int:
+    def row_count(self) -> typing.Optional[int]:
         """Get the number of rows in a table"""
-        return self._db.connection.execute(
+        result = self._db.connection.execute(
             self._db.sql_adapter.row_count(
                 schema_name=self._table.schema_name,
                 table_name=self._table.table_name,
             )
-        ).first_value()
+        )
+        if result:
+            return result.first_value()
+        else:
+            return None
 
     @property
     def table(self) -> domain.Table:
@@ -177,8 +196,9 @@ class Repository:
             raise exceptions.DatabaseIsReadOnly()
 
         pk_col_names = {col.column_name for col in self._pk_cols}
-        col_names = pk_col_names | self._change_tracking_columns
-        dest_rows = self.all(col_names)
+        # col_names = pk_col_names | self._change_tracking_columns
+        # dest_rows = self.all(col_names)
+        dest_rows = self.keys(True)
         if dest_rows.is_empty:
             logger.info(f"{self.full_table_name} is empty so the source rows will be fully loaded.")
             self.add(rows)

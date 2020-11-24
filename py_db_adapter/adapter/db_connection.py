@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import pathlib
+import types
 import typing
 
 from py_db_adapter import domain
@@ -30,7 +31,7 @@ class DbConnection(abc.ABC):
         schema_name: typing.Optional[str] = None,
         custom_pk_cols: typing.Optional[typing.Set[str]] = None,
         cache_dir: typing.Optional[pathlib.Path] = None,
-    ):
+    ) -> domain.Table:
         raise NotImplementedError
 
     def parameter_placeholder(self, /, column_name: str) -> str:
@@ -45,5 +46,10 @@ class DbConnection(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: typing.Optional[typing.Type[BaseException]],
+        exc_inst: typing.Optional[BaseException],
+        exc_tb: typing.Optional[types.TracebackType],
+    ) -> bool:
         raise NotImplementedError

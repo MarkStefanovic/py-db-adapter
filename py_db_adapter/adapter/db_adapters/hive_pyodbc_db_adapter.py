@@ -19,13 +19,10 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
         self,
         *,
         con: db_connections.PyodbcConnection,
-        hive_sql_adapter: typing.Optional[sql_adapters.HiveSQLAdapter] = None,
+        hive_sql_adapter: sql_adapters.HiveSQLAdapter = sql_adapters.HiveSQLAdapter(),
     ):
         self._con = con
-        if sql_adapter:
-            self._sql_adapter = hive_sql_adapter
-        else:
-            self._sql_adapter = sql_adapters.HiveSQLAdapter()
+        self._sql_adapter = hive_sql_adapter
 
     @property
     def connection(self) -> db_connection.DbConnection:
@@ -43,7 +40,7 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
         # sourcery skip: remove-unnecessary-else
         if result.is_empty:
             raise domain.exceptions.TableDoesNotExist(
-                f"No results were returned from {sql!r}."
+                table_name=table_name, schema_name=schema_name
             )
         else:
             for row in result.as_tuples():
@@ -51,7 +48,10 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
                     num_rows_match = re.search(".*, numRows=(\d+), .*", row[1])
                     if num_rows_match:
                         return int(num_rows_match.group(1))
-            raise domain.exceptions.FastRowCountFailed()
+            raise domain.exceptions.FastRowCountFailed(
+                table_name=table_name,
+                error_message=f"DESCRIBE EXTENDED {table_name} did not include numRows.",
+            )
 
     @property
     def sql_adapter(self) -> sql_adapter.SqlAdapter:

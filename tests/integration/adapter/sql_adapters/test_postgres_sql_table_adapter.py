@@ -5,35 +5,35 @@ import pyodbc
 from py_db_adapter import domain, adapter
 
 
-def test_postgres_sql_table_adapter_columns_sql_mapping(
-    pyodbc_postgres_con: pyodbc.Connection,
-) -> None:
-    table = adapter.pyodbc_inspect_table(
-        con=pyodbc_postgres_con,
-        table_name="employee",
-        schema_name="hr",
-    )
-    sql_adapter = adapter.PostgreSQLAdapter()
-    actual = {
-        col._column.column_name: col.__class__.__name__
-        for col in sql_adapter.column_adapters
-    }
-    expected = {
-        "active": "PostgresBooleanColumnSqlAdapter",
-        "date_added": "StandardDateTimeColumnSqlAdapter",
-        "date_updated": "StandardDateTimeColumnSqlAdapter",
-        "employee_dependents": "StandardIntegerColumnSqlAdapter",
-        "employee_dob": "StandardDateColumnSqlAdapter",
-        "employee_gender": "StandardTextColumnSqlAdapter",
-        "employee_id": "StandardIntegerColumnSqlAdapter",
-        "employee_middle_initial": "StandardTextColumnSqlAdapter",
-        "employee_name": "StandardTextColumnSqlAdapter",
-        "employee_performance_score": "StandardFloatColumnSqlAdapter",
-        "employee_phone": "StandardIntegerColumnSqlAdapter",
-        "employee_salary": "StandardDecimalColumnSqlAdapter",
-        "quotes": "StandardTextColumnSqlAdapter",
-    }
-    assert actual == expected
+# def test_postgres_sql_table_adapter_columns_sql_mapping(
+#     pyodbc_postgres_con: pyodbc.Connection,
+# ) -> None:
+#     table = adapter.pyodbc_inspect_table(
+#         con=pyodbc_postgres_con,
+#         table_name="employee",
+#         schema_name="hr",
+#     )
+#     sql_adapter = adapter.PostgreSQLAdapter()
+#     actual = {
+#         col._column.column_name: col.__class__.__name__
+#         for col in sql_adapter.column_adapters
+#     }
+#     expected = {
+#         "active": "PostgresBooleanColumnSqlAdapter",
+#         "date_added": "StandardDateTimeColumnSqlAdapter",
+#         "date_updated": "StandardDateTimeColumnSqlAdapter",
+#         "employee_dependents": "StandardIntegerColumnSqlAdapter",
+#         "employee_dob": "StandardDateColumnSqlAdapter",
+#         "employee_gender": "StandardTextColumnSqlAdapter",
+#         "employee_id": "StandardIntegerColumnSqlAdapter",
+#         "employee_middle_initial": "StandardTextColumnSqlAdapter",
+#         "employee_name": "StandardTextColumnSqlAdapter",
+#         "employee_performance_score": "StandardFloatColumnSqlAdapter",
+#         "employee_phone": "StandardIntegerColumnSqlAdapter",
+#         "employee_salary": "StandardDecimalColumnSqlAdapter",
+#         "quotes": "StandardTextColumnSqlAdapter",
+#     }
+#     assert actual == expected
 
 
 def test_postgres_decimal_column_sql_adapter_literal() -> None:

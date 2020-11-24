@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
+import types
 import typing
 
 import pyodbc
@@ -38,7 +39,7 @@ class PyodbcConnection(db_connection.DbConnection):
             )
         else:
             logger.debug(f"Executing sql:\n\t{std_sql}\n\tparams={params}")
-            positional_params = [tuple(param.values()) for param in params]
+            positional_params = [tuple(param.values()) for param in params or {}]
             if self._cur is None:
                 self._cur = self._con.cursor()
                 self._cur.fast_executemany = self._fast_executemany
@@ -78,7 +79,7 @@ class PyodbcConnection(db_connection.DbConnection):
         schema_name: typing.Optional[str] = None,
         custom_pk_cols: typing.Optional[typing.Set[str]] = None,
         cache_dir: typing.Optional[pathlib.Path] = None,
-    ):
+    ) -> domain.Table:
         if cache_dir is None:
             return pyodbc_inspector.pyodbc_inspect_table(
                 con=self.handle,
@@ -112,7 +113,12 @@ class PyodbcConnection(db_connection.DbConnection):
             logger.debug(f"Opened connection to {self._db_name}.")
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: typing.Optional[typing.Type[BaseException]],
+        exc_inst: typing.Optional[BaseException],
+        exc_tb: typing.Optional[types.TracebackType],
+    ) -> typing.Literal[False]:
         if self._cur is not None:
             self._cur.close()
             self._cur = None
@@ -121,3 +127,4 @@ class PyodbcConnection(db_connection.DbConnection):
             self._con.close()
             self._con = None
             logger.debug(f"Closed connection to {self._db_name}.")
+        return False
