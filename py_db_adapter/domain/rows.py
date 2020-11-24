@@ -8,6 +8,7 @@ __all__ = (
     "Rows",
 )
 
+from py_db_adapter.domain import row_diff
 
 Row = typing.Tuple[typing.Any, ...]
 
@@ -22,10 +23,36 @@ class Rows:
         self._column_names = list(column_names)
         self._rows = list(rows)
 
-    def chunks(self, /, size: int) -> typing.Generator[Rows, typing.Any, None]:
-        batches = (self._rows[i : i + size] for i in range(0, len(self._rows), size))
-        for batch in batches:
-            yield Rows(column_names=self._column_names, rows=batch,)
+    def as_dicts(self) -> typing.List[typing.Dict[str, typing.Hashable]]:
+        return [dict(sorted(zip(self._column_names, row))) for row in self._rows]
+
+    def as_lookup_table(
+        self,
+        *,
+        key_columns: typing.Set[str],
+        value_columns: typing.Optional[typing.Set[str]] = None,
+    ) -> typing.Dict[Row, Row]:
+        pk_cols = sorted(set(key_columns))
+        if value_columns:
+            value_cols = sorted(set(value_columns))
+        else:
+            value_cols = sorted(
+                {col for col in self._column_names if col not in pk_cols}
+            )
+        return {
+            tuple(row[self.column_indices[col_name]] for col_name in pk_cols): tuple(
+                row[self.column_indices[col_name]] for col_name in value_cols
+            )
+            for row in self._rows
+        }
+
+    def as_tuples(self) -> typing.List[Row]:
+        return self._rows
+
+    def batches(self, /, size: int) -> typing.Generator[Rows, typing.Any, None]:
+        chunks = (self._rows[i : i + size] for i in range(0, len(self._rows), size))
+        for chunk in chunks:
+            yield Rows(column_names=self._column_names, rows=chunk)
 
     def column(self, /, column_name: str) -> typing.List[typing.Hashable]:
         col_index = self.column_indices[column_name]
@@ -39,9 +66,32 @@ class Rows:
     def column_indices(self) -> typing.Dict[str, int]:
         return {col_name: i for i, col_name in enumerate(self._column_names)}
 
-    @property
-    def is_empty(self) -> bool:
-        return not self._rows
+    def compare(
+        self,
+        *,
+        rows: Rows,
+        key_cols: typing.Set[str],
+        compare_cols: typing.Set[str],
+        ignore_missing_key_cols: bool,
+        ignore_extra_key_cols: bool,
+    ) -> row_diff.RowDiff:
+        return row_diff.RowDiff(
+            key_cols=key_cols,
+            compare_cols=compare_cols,
+            src_rows=self,
+            dest_rows=rows,
+            ignore_missing_key_cols=ignore_missing_key_cols,
+            ignore_extra_key_cols=ignore_extra_key_cols,
+        )
+
+    @staticmethod
+    def concat(rows: typing.List[Rows]) -> Rows:
+        column_names = rows[0].column_names
+        all_rows = [row for batch in rows for row in batch.as_tuples()]
+        return Rows(
+            column_names=column_names,
+            rows=all_rows,
+        )
 
     @classmethod
     def from_dicts(
@@ -71,46 +121,24 @@ class Rows:
         ]
         return Rows(column_names=column_names, rows=rows)
 
-    def as_dicts(self) -> typing.List[typing.Dict[str, typing.Hashable]]:
-        return [dict(sorted(zip(self._column_names, row))) for row in self._rows]
-
-    def as_lookup_table(
-        self,
-        *,
-        key_columns: typing.Set[str],
-        value_columns: typing.Optional[typing.Set[str]] = None,
-    ) -> typing.Dict[Row, Row]:
-        pk_cols = sorted(set(key_columns))
-        if value_columns:
-            value_cols = sorted(set(value_columns))
-        else:
-            value_cols = sorted(
-                {col for col in self._column_names if col not in pk_cols}
-            )
-        return {
-            tuple(row[self.column_indices[col_name]] for col_name in pk_cols): tuple(
-                row[self.column_indices[col_name]] for col_name in value_cols
-            )
-            for row in self._rows
-        }
-
-    def as_tuples(self) -> typing.List[Row]:
-        return self._rows
+    @property
+    def is_empty(self) -> bool:
+        return not self._rows
 
     @property
     def row_count(self) -> int:
         return len(self._rows)
 
-    # def subset(self, column_names: typing.Set[str]) -> Rows:
-    #     cols = sorted(column_names)
-    #     rows = [
-    #         tuple(row[self.column_indices[col_name]] for col_name in cols)
-    #         for row in self._rows
-    #     ]
-    #     return Rows(
-    #         column_names=cols,
-    #         rows=rows,
-    #     )
+    def subset(self, column_names: typing.Set[str]) -> Rows:
+        cols = sorted(column_names)
+        rows = [
+            tuple(row[self.column_indices[col_name]] for col_name in cols)
+            for row in self._rows
+        ]
+        return Rows(
+            column_names=cols,
+            rows=rows,
+        )
 
     def __eq__(self, other: typing.Any) -> bool:
         if other.__class__ is self.__class__:

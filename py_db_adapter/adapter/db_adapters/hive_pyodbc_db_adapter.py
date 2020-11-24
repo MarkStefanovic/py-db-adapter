@@ -1,5 +1,4 @@
 import functools
-import pathlib
 import re
 import typing
 
@@ -11,6 +10,8 @@ from py_db_adapter.adapter import (
     sql_adapter,
     sql_adapters,
 )
+
+__all__ = ("HivePyodbcDbAdapter",)
 
 
 class HivePyodbcDbAdapter(db_adapter.DbAdapter):
@@ -34,12 +35,16 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
         self, *, table_name: str, schema_name: typing.Optional[str] = None
     ) -> int:
         """A faster row-count method than .row_count(), but is only an estimate"""
-        full_table_name = self._sql_adapter.full_table_name(schema_name=schema_name, table_name=table_name)
+        full_table_name = self._sql_adapter.full_table_name(
+            schema_name=schema_name, table_name=table_name
+        )
         sql = f"DESCRIBE EXTENDED {full_table_name}"
         result = self._con.execute(sql)
         # sourcery skip: remove-unnecessary-else
         if result.is_empty:
-            raise domain.exceptions.TableDoesNotExist(f"No results were returned from {sql!r}.")
+            raise domain.exceptions.TableDoesNotExist(
+                f"No results were returned from {sql!r}."
+            )
         else:
             for row in result.as_tuples():
                 if row[0] == "Detailed Table Information":

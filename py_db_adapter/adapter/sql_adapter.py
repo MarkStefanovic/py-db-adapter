@@ -1,10 +1,8 @@
 import abc
-import functools
 import typing
 
 from py_db_adapter import domain
 from py_db_adapter.adapter import column_adapters, column_adapter
-from py_db_adapter.domain import sql_formatter
 
 __all__ = ("SqlAdapter",)
 
@@ -22,10 +20,7 @@ class SqlAdapter(abc.ABC):
         dummy_csv = ",".join(
             parameter_placeholder(col_name) for col_name in rows.column_names
         )
-        return (
-            f"INSERT INTO {self.full_table_name} ({col_name_csv}) "
-            f"VALUES ({dummy_csv})"
-        )
+        return f"INSERT INTO {self.full_table_name} ({col_name_csv}) VALUES ({dummy_csv})"
 
     @abc.abstractmethod
     def create_boolean_column(
@@ -81,10 +76,7 @@ class SqlAdapter(abc.ABC):
         full_table_name = self.full_table_name(
             schema_name=table.schema_name, table_name=table.table_name
         )
-        return f"""CREATE TABLE {full_table_name} (
-                {col_csv}
-            ,   PRIMARY KEY ({pk_col_csv})
-            )"""
+        return f"CREATE TABLE {full_table_name} ({col_csv}, PRIMARY KEY ({pk_col_csv}))"
 
     def delete(
         self,
@@ -103,7 +95,7 @@ class SqlAdapter(abc.ABC):
         full_table_name = self.full_table_name(
             schema_name=schema_name, table_name=table_name
         )
-        return f"DELETE FROM {full_table_name} " f"WHERE {where_clause}"
+        return f"DELETE FROM {full_table_name} WHERE {where_clause}"
 
     def drop(
         self,
@@ -138,11 +130,7 @@ class SqlAdapter(abc.ABC):
             table_name=table_name,
         )
 
-        return (
-            f"SELECT {select_clause} "
-            f"FROM {full_table_name} "
-            f"WHERE {where_clause}"
-        )
+        return f"SELECT {select_clause} FROM {full_table_name} WHERE {where_clause}"
 
     def full_table_name(
         self, *, schema_name: typing.Optional[str], table_name: str
@@ -180,9 +168,7 @@ class SqlAdapter(abc.ABC):
         self, /, table: domain.Table
     ) -> typing.List[column_adapter.ColumnSqlAdapter[typing.Any]]:
         return [
-            self._map_column_to_adapter(col)
-            for col in table.columns
-            if col.primary_key
+            self._map_column_to_adapter(col) for col in table.columns if col.primary_key
         ]
 
     def row_count(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
@@ -191,11 +177,21 @@ class SqlAdapter(abc.ABC):
         )
         return f"SELECT COUNT(*) AS row_count FROM {full_table_name}"
 
-    def select_all(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
+    def select_all(
+        self,
+        *,
+        schema_name: typing.Optional[str],
+        table_name: str,
+        columns: typing.Optional[typing.Set[str]] = None,
+    ) -> str:
         full_table_name = self.full_table_name(
             schema_name=schema_name, table_name=table_name
         )
-        return f"SELECT * FROM {full_table_name}"
+        if columns:
+            col_name_csv = ", ".join(self.wrap(col) for col in columns)
+            return f"SELECT {col_name_csv} FROM {full_table_name}"
+        else:
+            return f"SELECT * FROM {full_table_name}"
 
     def select_keys(
         self,
@@ -214,7 +210,7 @@ class SqlAdapter(abc.ABC):
             select_cols_csv = f"{pk_cols_csv}, {change_cols_csv}"
         else:
             select_cols_csv = pk_cols_csv
-        return f"SELECT DISTINCT {select_cols_csv} " f"FROM {self.full_table_name}"
+        return f"SELECT DISTINCT {select_cols_csv} FROM {self.full_table_name}"
 
     @abc.abstractmethod
     def table_exists(
@@ -258,14 +254,18 @@ class SqlAdapter(abc.ABC):
         else:
             return self._where_clause_multiple_pk_cols(rows=rows, pk_cols=pk_cols)
 
-    def _where_clause_single_pk_col(self, *, rows: domain.Rows, pk_col: domain.Column) -> str:
+    def _where_clause_single_pk_col(
+        self, *, rows: domain.Rows, pk_col: domain.Column
+    ) -> str:
         pk_col_adapter = self._map_column_to_adapter(pk_col)
         wrapped_pk_col_name = pk_col_adapter.wrapped_column_name
         pk_values = rows.column(pk_col_adapter.column_metadata.column_name)
         pk_values_csv = ",".join(pk_col_adapter.literal(v) for v in pk_values)
         return f"{wrapped_pk_col_name} IN ({pk_values_csv})"
 
-    def _where_clause_multiple_pk_cols(self, *, rows: domain.Rows, pk_cols: typing.Set[domain.Column]) -> str:
+    def _where_clause_multiple_pk_cols(
+        self, *, rows: domain.Rows, pk_cols: typing.Set[domain.Column]
+    ) -> str:
         pk_col_adapters = sorted(
             (self._map_column_to_adapter(col) for col in pk_cols),
             key=lambda c: c.column_metadata.column_name,
@@ -275,9 +275,9 @@ class SqlAdapter(abc.ABC):
             row_identifier: typing.Dict[str, typing.Any] = {}
             for col_adapter in pk_col_adapters:
                 col_name = col_adapter.column_metadata.column_name
-                row_identifier[
-                    col_adapter.wrapped_column_name
-                ] = col_adapter.literal(row[col_name])
+                row_identifier[col_adapter.wrapped_column_name] = col_adapter.literal(
+                    row[col_name]
+                )
             row_identifiers.append(row_identifier)
 
         row_predicates: typing.List[str] = []

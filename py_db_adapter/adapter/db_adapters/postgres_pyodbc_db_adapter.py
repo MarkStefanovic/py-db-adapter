@@ -9,6 +9,8 @@ from py_db_adapter.adapter import (
     sql_adapters,
 )
 
+__all__ = ("PostgresPyodbcDbAdapter",)
+
 
 class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
     def __init__(

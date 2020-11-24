@@ -31,7 +31,7 @@ class RowDiff:
         self._rows_deleted: typing.Optional[rows.Rows] = None
         self._rows_updated: typing.Optional[rows.Rows] = None
 
-    def _compare(self):
+    def _compare(self) -> None:
         results = compare_rows(
             key_cols=self._key_cols,
             src_rows=self._src_rows,
@@ -43,18 +43,21 @@ class RowDiff:
         self._rows_deleted = results["deleted"]
         self._rows_updated = results["updated"]
 
+    @property
     def rows_added(self) -> rows.Rows:
         if self._rows_added is None:
             self._compare()
         assert self._rows_added is not None
         return self._rows_added
 
+    @property
     def rows_deleted(self) -> rows.Rows:
         if self._rows_deleted is None:
             self._compare()
         assert self._rows_deleted is not None
         return self._rows_deleted
 
+    @property
     def rows_updated(self) -> rows.Rows:
         if self._rows_updated is None:
             self._compare()

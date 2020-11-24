@@ -9,43 +9,30 @@ __all__ = ("DbService",)
 
 
 class DbService(abc.ABC):
+    # @abc.abstractmethod
+    # def copy_table(
+    #     self,
+    #     *,
+    #     src_db: DbService,
+    #     src_schema_name: typing.Optional[str],
+    #     src_table_name: str,
+    #     dest_schema_name: typing.Optional[str],
+    #     dest_table_name: str,
+    #     columns: typing.Optional[typing.Set[str]] = None,
+    # ) -> None:
+    #     raise NotImplementedError
+
     @abc.abstractmethod
-    def copy_table(
-        self,
-        *,
-        src_db: DbService,
-        src_schema_name: typing.Optional[str],
-        src_table_name: str,
-        dest_schema_name: typing.Optional[str],
-        dest_table_name: str,
-        columns: typing.Optional[typing.Set[str]] = None,
-    ) -> None:
+    def row_count(self, *, schema_name: typing.Optional[str], table_name: str) -> int:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def fast_row_count(
-        self,
-        *,
-        table_name: str,
-        schema_name: typing.Optional[str],
-    ) -> int:
+    def inspect_table(self, *, schema_name: typing.Optional[str], table_name: str) -> domain.Table:
         raise NotImplementedError
 
+    @property
     @abc.abstractmethod
-    def inspect_table(
-        self,
-        table_name: str,
-        schema_name: typing.Optional[str],
-    ) -> domain.Table:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def table_exists(
-        self,
-        *,
-        table_name: str,
-        schema_name: typing.Optional[str],
-    ) -> bool:
+    def exists(self, *, schema_name: typing.Optional[str], table_name: str) -> bool:
         raise NotImplementedError
 
     @abc.abstractmethod

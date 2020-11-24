@@ -74,6 +74,13 @@ class FastRowCountFailed(DataError):
         self.table_name = table_name
 
 
+class MissingColumns(DataError):
+    def __init__(self, /, missing_cols: typing.Set[str]):
+        self.missing_cols = missing_cols
+        msg = f"The following required columns are missing: {', '.join(sorted(missing_cols))}"
+        super().__init__(msg)
+
+
 class NoCommonKeyColumns(DataError):
     def __init__(
         self, *, src_key_cols: typing.Set[str], dest_key_cols: typing.Set[str]
