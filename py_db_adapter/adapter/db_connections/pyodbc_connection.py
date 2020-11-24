@@ -28,12 +28,11 @@ class PyodbcConnection(db_connection.DbConnection):
         self._con: typing.Optional[pyodbc.Connection] = None
         self._cur: typing.Optional[pyodbc.Cursor] = None
 
-    @pysnooper.snoop()
     def execute(
         self,
         sql: str,
         params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
-        return_rows: bool = True,
+        returns_rows: bool = True,
     ) -> typing.Optional[domain.Rows]:
         std_sql = domain.standardize_sql(sql)
         if self._con is None:
@@ -55,7 +54,7 @@ class PyodbcConnection(db_connection.DbConnection):
             else:
                 result = self._cur.execute(std_sql, positional_params[0])
 
-            if return_rows:
+            if returns_rows:
                 if rows := result.fetchall():
                     column_names = [description[0] for description in self._cur.description]
                     return domain.Rows(

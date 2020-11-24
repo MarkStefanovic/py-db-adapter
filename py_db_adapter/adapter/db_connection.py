@@ -20,7 +20,7 @@ class DbConnection(abc.ABC):
         self,
         sql: str,
         params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
-        return_rows: bool = True,
+        returns_rows: bool = True,
     ) -> typing.Optional[domain.Rows]:
         raise NotImplementedError
 
