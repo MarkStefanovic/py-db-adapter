@@ -516,8 +516,9 @@ class PostgreSQLAdapter(sql_adapter.SqlAdapter):
             f"IS NULL THEN 0 ELSE 1 END;"
         )
 
-    def truncate(self, /, table: domain.Table) -> str:
-        return f"TRUNCATE TABLE {self.full_table_name(table)}"
+    def truncate(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
+        full_table_name = self.full_table_name(schema_name=schema_name, table_name=table_name)
+        return f"TRUNCATE TABLE {full_table_name}"
 
     def wrap(self, obj_name: str) -> str:
         if " " in obj_name or obj_name.lower() in POSTGRES_RESERVED_KEYWORDS:

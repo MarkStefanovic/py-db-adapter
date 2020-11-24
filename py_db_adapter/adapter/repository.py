@@ -134,10 +134,11 @@ class Repository:
         else:
             pk_cols = {col for col in self._table.columns if col.primary_key}
             sql = self._db.sql_adapter.update(
-                schema_name=self._table.schema_name,
-                table_name=self._table.table_name,
+                parameter_placeholder=self._db.connection.parameter_placeholder,
                 pk_cols=pk_cols,
                 rows=rows,
+                schema_name=self._table.schema_name,
+                table_name=self._table.table_name,
             )
             return self._db.connection.execute(sql)
 

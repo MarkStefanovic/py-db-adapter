@@ -1,14 +1,12 @@
-import functools
-import pathlib
 import typing
 
+from py_db_adapter import domain
 from py_db_adapter.adapter import (
     db_adapter,
-    sql_adapter,
     db_connection,
-    sql_adapters,
-    pyodbc_inspector,
     db_connections,
+    sql_adapter,
+    sql_adapters,
 )
 
 
@@ -32,14 +30,16 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
     def fast_row_count(
         self, *, table_name: str, schema_name: typing.Optional[str] = None
     ) -> typing.Optional[int]:
-        table_name = self._sql_adapter.full_table_name(
-            schema_name=schema_name, table_name=table_name
-        )
+        if schema_name is None:
+            raise domain.exceptions.SchemaIsRequired(
+                f"A schema is required for PostgresPyodbcDbAdapter's fast_row_count method"
+            )
+
         sql = f"""
             SELECT
-                (reltuples / relpages) *
-                (
-                    pg_relation_size('{self.full_table_name}') / 
+                (reltuples / relpages)
+                * (
+                    pg_relation_size('{schema_name}.{table_name}') / 
                     current_setting('block_size')::INTEGER
                 ) AS rows
             FROM pg_class
@@ -52,30 +52,6 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
         else:
             return result.first_value()
 
-    def inspect_table(
-        self,
-        *,
-        table_name: str,
-        schema_name: typing.Optional[str] = None,
-        custom_pk_cols: typing.Optional[typing.Set[str]] = None,
-        cache_dir: typing.Optional[pathlib.Path] = None,
-    ):
-        if cache_dir is None:
-            return pyodbc_inspector.pyodbc_inspect_table(
-                con=self._con.handle,
-                table_name=table_name,
-                schema_name=schema_name,
-                custom_pk_cols=custom_pk_cols,
-            )
-        else:
-            return pyodbc_inspector.pyodbc_inspect_table_and_cache(
-                con=self._con.handle,
-                table_name=table_name,
-                schema_name=schema_name,
-                custom_pk_cols=custom_pk_cols,
-                cache_dir=cache_dir,
-            )
-
     @property
     def sql_adapter(self) -> sql_adapter.SqlAdapter:
         return self._sql_adapter
@@ -83,4 +59,16 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
     def table_exists(
         self, *, table_name: str, schema_name: typing.Optional[str] = None
     ) -> bool:
-        pass
+        if schema_name is None:
+            raise domain.exceptions.SchemaIsRequired(
+                f"A schema is required for PostgresPyodbcDbAdapter's table_exists method"
+            )
+        sql = f"""
+           SELECT COUNT(*) AS ct
+           FROM   information_schema.tables 
+           WHERE  table_schema = '{schema_name}'
+           AND    table_name   = '{table_name}'
+        );
+        """
+        result = self._con.execute(sql).first_value()
+        return result > 0

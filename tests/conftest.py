@@ -39,9 +39,13 @@ def engine() -> sa.engine.Engine:
 
 
 @pytest.fixture(scope="session")
-def pyodbc_postgres_con() -> pyodbc.Connection:
-    con_str = os.environ["PYODBC_URI"]
-    with pyodbc.connect(con_str) as con:
+def postgres_pyodbc_db_uri() -> str:
+    return os.environ["PYODBC_URI"]
+
+
+@pytest.fixture(scope="session")
+def pyodbc_postgres_con(postgres_pyodbc_db_uri: str) -> pyodbc.Connection:
+    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
         setup_db(con)
         yield con
 
@@ -55,7 +59,7 @@ def employee_sql_table_adapter(
         table_name="employee",
         schema_name="hr",
     )
-    return adapter.PostgreSQLAdapter(table=table)
+    return adapter.PostgreSQLAdapter()
 
 
 @pytest.fixture(scope="session")
@@ -67,7 +71,7 @@ def customer_sql_table_adapter(
         table_name="customer",
         schema_name="sales",
     )
-    return adapter.PostgreSQLAdapter(table=table)
+    return adapter.PostgreSQLAdapter()
 
 # if __name__ == "__main__":
 #     fp = pathlib.Path("./fixtures/hr.employee.sql")

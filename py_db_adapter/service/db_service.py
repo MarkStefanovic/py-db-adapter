@@ -3,6 +3,8 @@ from __future__ import annotations
 import abc
 import typing
 
+from py_db_adapter import domain, adapter
+
 __all__ = ("DbService",)
 
 
@@ -30,7 +32,11 @@ class DbService(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def inspect_table(self):
+    def inspect_table(
+        self,
+        table_name: str,
+        schema_name: typing.Optional[str],
+    ) -> domain.Table:
         raise NotImplementedError
 
     @abc.abstractmethod

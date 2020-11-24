@@ -1,5 +1,19 @@
 import typing
 
+__all__ = (
+    "PyDbAdapterException",
+    "DatabaseIsReadOnly",
+    "DataError",
+    "DeveloperError",
+    "ExtraKeyColumns",
+    "FastRowCountFailed",
+    "MissingPrimaryKey",
+    "MissingKeyColumns",
+    "NoCommonKeyColumns",
+    "InvalidCustomPrimaryKey",
+    "TableDoesNotExist",
+)
+
 
 class PyDbAdapterException(Exception):
     def __init__(self, message: str) -> None:
@@ -27,7 +41,9 @@ class MissingPrimaryKey(DataError):
 
 
 class MissingKeyColumns(DataError):
-    def __init__(self, *, actual_key_cols: typing.Set[str], expected_key_cols: typing.Set[str]):
+    def __init__(
+        self, *, actual_key_cols: typing.Set[str], expected_key_cols: typing.Set[str]
+    ):
         self.actual_key_cols = actual_key_cols
         self.expected_key_cols = expected_key_cols
         msg = (
@@ -38,7 +54,9 @@ class MissingKeyColumns(DataError):
 
 
 class ExtraKeyColumns(DataError):
-    def __init__(self, *, actual_key_cols: typing.Set[str], expected_key_cols: typing.Set[str]):
+    def __init__(
+        self, *, actual_key_cols: typing.Set[str], expected_key_cols: typing.Set[str]
+    ):
         self.actual_key_cols = actual_key_cols
         self.expected_key_cols = expected_key_cols
         msg = (
@@ -46,6 +64,14 @@ class ExtraKeyColumns(DataError):
             f"but got {', '.join(sorted(expected_key_cols))}."
         )
         super().__init__(msg)
+
+
+class FastRowCountFailed(DataError):
+    def __init__(self, table_name: str, error_message: str):
+        msg = f"fast_row_count() failed for the {table_name} table with the following error message:\n{error_message}"
+        super().__init__(msg)
+
+        self.table_name = table_name
 
 
 class NoCommonKeyColumns(DataError):
@@ -74,6 +100,11 @@ class InvalidCustomPrimaryKey(DataError):
 class DatabaseIsReadOnly(DeveloperError):
     def __init__(self) -> None:
         super().__init__("The database is read only.")
+
+
+class SchemaIsRequired(DeveloperError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
 
 
 class TableDoesNotExist(DataError):

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import typing
+
 from py_db_adapter import domain
 from py_db_adapter.adapter import sql_adapter, column_adapters
 
@@ -608,7 +610,7 @@ class HiveSQLAdapter(sql_adapter.SqlAdapter):
         # TODO
         raise NotImplementedError
 
-    def truncate(self, /, table: domain.Table) -> str:
+    def truncate(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
         raise NotImplementedError
 
     def wrap(self, obj_name: str) -> str:
