@@ -6,6 +6,7 @@ import types
 import typing
 
 import pyodbc
+import pysnooper
 
 from py_db_adapter import domain
 from py_db_adapter.adapter import db_connection, pyodbc_inspector
@@ -27,11 +28,13 @@ class PyodbcConnection(db_connection.DbConnection):
         self._con: typing.Optional[pyodbc.Connection] = None
         self._cur: typing.Optional[pyodbc.Cursor] = None
 
+    @pysnooper.snoop()
     def execute(
         self,
         sql: str,
         params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
-    ) -> domain.Rows:
+        return_rows: bool = True,
+    ) -> typing.Optional[domain.Rows]:
         std_sql = domain.standardize_sql(sql)
         if self._con is None:
             raise exceptions.DeveloperError(
@@ -52,13 +55,14 @@ class PyodbcConnection(db_connection.DbConnection):
             else:
                 result = self._cur.execute(std_sql, positional_params[0])
 
-            if rows := result.fetchall():
-                column_names = [description[0] for description in self._cur.description]
-                return domain.Rows(
-                    column_names=column_names, rows=[tuple(row) for row in rows]
-                )
-            else:
-                return domain.Rows(column_names=[], rows=[])
+            if return_rows:
+                if rows := result.fetchall():
+                    column_names = [description[0] for description in self._cur.description]
+                    return domain.Rows(
+                        column_names=column_names, rows=[tuple(row) for row in rows]
+                    )
+                else:
+                    return domain.Rows(column_names=[], rows=[])
 
     def commit(self) -> None:
         if self._con is None:
@@ -70,6 +74,8 @@ class PyodbcConnection(db_connection.DbConnection):
 
     @property
     def handle(self) -> pyodbc.Connection:
+        if self._con is None:
+            self._con = pyodbc.connect(self._uri)
         return self._con
 
     def inspect_table(

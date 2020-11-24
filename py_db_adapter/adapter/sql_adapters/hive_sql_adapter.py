@@ -51,7 +51,7 @@ RESERVED_KEYWORDS = (
     "browse",
     "bulk",
     "by",
-    "cache",
+    ".cache",
     "cached",
     "call",
     "called",

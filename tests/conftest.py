@@ -13,6 +13,11 @@ from py_db_adapter import domain, adapter
 dotenv.load_dotenv(dotenv.find_dotenv())
 
 
+@pytest.fixture(scope="session")
+def cache_dir() -> pathlib.Path:
+    return pathlib.Path(os.environ["CACHE_DIR"])
+
+
 def read_sql(fp: pathlib.Path, /) -> typing.List[str]:
     with fp.open(mode="r") as fh:
         return [
@@ -50,28 +55,28 @@ def pyodbc_postgres_con(postgres_pyodbc_db_uri: str) -> pyodbc.Connection:
         yield con
 
 
-@pytest.fixture(scope="session")
-def employee_sql_table_adapter(
-    pyodbc_postgres_con: pyodbc.Connection,
-) -> adapter.PostgreSQLAdapter:
-    table = adapter.pyodbc_inspect_table(
-        con=pyodbc_postgres_con,
-        table_name="employee",
-        schema_name="hr",
-    )
-    return adapter.PostgreSQLAdapter()
-
-
-@pytest.fixture(scope="session")
-def customer_sql_table_adapter(
-    pyodbc_postgres_con: pyodbc.Connection,
-) -> adapter.PostgreSQLAdapter:
-    table = adapter.pyodbc_inspect_table(
-        con=pyodbc_postgres_con,
-        table_name="customer",
-        schema_name="sales",
-    )
-    return adapter.PostgreSQLAdapter()
+# @pytest.fixture(scope="session")
+# def employee_sql_table_adapter(
+#     pyodbc_postgres_con: pyodbc.Connection,
+# ) -> adapter.PostgreSQLAdapter:
+#     table = adapter.pyodbc_inspect_table(
+#         con=pyodbc_postgres_con,
+#         table_name="employee",
+#         schema_name="hr",
+#     )
+#     return adapter.PostgreSQLAdapter()
+#
+#
+# @pytest.fixture(scope="session")
+# def customer_sql_table_adapter(
+#     pyodbc_postgres_con: pyodbc.Connection,
+# ) -> adapter.PostgreSQLAdapter:
+#     table = adapter.pyodbc_inspect_table(
+#         con=pyodbc_postgres_con,
+#         table_name="customer",
+#         schema_name="sales",
+#     )
+#     return adapter.PostgreSQLAdapter()
 
 # if __name__ == "__main__":
 #     fp = pathlib.Path("./fixtures/hr.employee.sql")

@@ -78,8 +78,8 @@ class Rows:
         return row_diff.RowDiff(
             key_cols=key_cols,
             compare_cols=compare_cols,
-            src_rows=self,
-            dest_rows=rows,
+            src_rows=rows,
+            dest_rows=self,
             ignore_missing_key_cols=ignore_missing_key_cols,
             ignore_extra_key_cols=ignore_extra_key_cols,
         )
@@ -135,10 +135,7 @@ class Rows:
             tuple(row[self.column_indices[col_name]] for col_name in cols)
             for row in self._rows
         ]
-        return Rows(
-            column_names=cols,
-            rows=rows,
-        )
+        return Rows(column_names=cols, rows=rows)
 
     def __eq__(self, other: typing.Any) -> bool:
         if other.__class__ is self.__class__:

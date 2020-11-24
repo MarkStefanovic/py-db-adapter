@@ -27,6 +27,7 @@ class DbService(abc.ABC):
         table_name: str,
         change_tracking_columns: typing.Set[str],
         pk_columns: typing.Optional[typing.Set[str]] = None,
+        batch_size: int = 1_000,
     ) -> adapter.Repository:
         table = self.con.inspect_table(
             table_name=table_name,
@@ -35,7 +36,10 @@ class DbService(abc.ABC):
             cache_dir=self.cache_dir,
         )
         return adapter.Repository(
-            db=self.db, table=table, change_tracking_columns=change_tracking_columns
+            db=self.db,
+            table=table,
+            change_tracking_columns=change_tracking_columns,
+            batch_size=batch_size,
         )
 
     @property

@@ -48,7 +48,7 @@ POSTGRES_RESERVED_KEYWORDS = {
     "boolean",
     "both",
     "by",
-    "cache",
+    ".cache",
     "call",
     "called",
     "cascade",

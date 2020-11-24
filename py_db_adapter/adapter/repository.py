@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import itertools
 import logging
 import typing
 
@@ -26,7 +25,9 @@ class Repository:
     ):
         self._db = db
         self._table = table
-        self._change_tracking_columns = set(change_tracking_columns) if change_tracking_columns else set()
+        self._change_tracking_columns = (
+            set(change_tracking_columns) if change_tracking_columns else set()
+        )
         self._read_only = read_only
         self._batch_size = batch_size
 
@@ -36,11 +37,13 @@ class Repository:
 
         for batch in rows.batches(self._batch_size):
             sql = self._db.sql_adapter.add_rows(
+                schema_name=self._table.schema_name,
+                table_name=self._table.table_name,
                 parameter_placeholder=self._db.connection.parameter_placeholder,
                 rows=batch,
             )
             params = batch.as_dicts()
-            self._db.connection.execute(sql, params=params)
+            self._db.connection.execute(sql, params=params, return_rows=False)
 
     def all(self, /, columns: typing.Optional[typing.Set[str]] = None) -> domain.Rows:
         sql = self._db.sql_adapter.select_all(
@@ -48,7 +51,7 @@ class Repository:
             table_name=self.table.table_name,
             columns=columns,
         )
-        result = self._db.connection.execute(sql)
+        result = self._db.connection.execute(sql, return_rows=True)
         if result is None:
             return domain.Rows(
                 column_names=columns or sorted(self._table.column_names),
@@ -61,7 +64,9 @@ class Repository:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
 
-        self._db.connection.execute(self._db.sql_adapter.definition(self._table))
+        self._db.connection.execute(
+            self._db.sql_adapter.definition(self._table), return_rows=False
+        )
 
     def delete(self, /, rows: domain.Rows) -> None:
         if self._read_only:
@@ -76,7 +81,7 @@ class Repository:
         )
         for batch in rows.batches(self._batch_size):
             params = batch.as_dicts()
-            self._db.connection.execute(sql, params)
+            self._db.connection.execute(sql, params, return_rows=False)
 
     def drop(self) -> None:
         if self._read_only:
@@ -86,7 +91,7 @@ class Repository:
             schema_name=self._table.schema_name,
             table_name=self._table.table_name,
         )
-        self._db.connection.execute(sql)
+        self._db.connection.execute(sql, return_rows=False)
 
     @property
     def full_table_name(self) -> str:
@@ -109,8 +114,15 @@ class Repository:
                 pk_cols=self._pk_cols,
                 select_cols=cols,
             )
-            params = batch.as_dicts()
-            row_batch = self._db.connection.execute(sql, params=params)
+            if len(self._pk_cols) == 1:  # where-clause uses IN (...)
+                row_batch = self._db.connection.execute(sql, return_rows=True)
+            else:
+                pks = batch.subset(self._table.primary_key_column_names).as_dicts()
+                row_batch = self._db.connection.execute(
+                    sql, params=pks, return_rows=True
+                )
+            # params = batch.as_dicts()
+            # row_batch = self._db.connection.execute(sql, params=params)
             if row_batch:
                 batches.append(row_batch)
         return domain.Rows.concat(batches)
@@ -122,20 +134,27 @@ class Repository:
     def keys(self, /, include_change_tracking_cols: bool = True) -> domain.Rows:
         if include_change_tracking_cols:
             sql = self._db.sql_adapter.select_keys(
+                schema_name=self._table.schema_name,
+                table_name=self._table.table_name,
                 pk_cols=self._table.primary_key_column_names,
                 change_tracking_cols=set(self._change_tracking_columns),
                 include_change_tracking_cols=include_change_tracking_cols,
             )
         else:
             sql = self._db.sql_adapter.select_keys(
+                schema_name=self._table.schema_name,
+                table_name=self._table.table_name,
                 pk_cols=self._table.primary_key_column_names,
                 change_tracking_cols=set(),
                 include_change_tracking_cols=include_change_tracking_cols,
             )
-        result = self._db.connection.execute(sql)
+        result = self._db.connection.execute(sql, return_rows=True)
         if result is None:
             return domain.Rows(
-                column_names=sorted(self._table.primary_key_column_names | set(self._change_tracking_columns)),
+                column_names=sorted(
+                    self._table.primary_key_column_names
+                    | set(self._change_tracking_columns)
+                ),
                 rows=[],
             )
         else:
@@ -147,7 +166,8 @@ class Repository:
             self._db.sql_adapter.row_count(
                 schema_name=self._table.schema_name,
                 table_name=self._table.table_name,
-            )
+            ),
+            return_rows=True,
         )
         if result:
             return result.first_value()
@@ -166,7 +186,7 @@ class Repository:
             schema_name=self._table.schema_name,
             table_name=self._table.table_name,
         )
-        self._db.connection.execute(sql)
+        self._db.connection.execute(sql, return_rows=False)
 
     def update(self, /, rows: domain.Rows) -> None:
         if self._read_only:
@@ -175,51 +195,20 @@ class Repository:
         for batch in rows.batches(self._batch_size):
             sql = self._db.sql_adapter.update(
                 parameter_placeholder=self._db.connection.parameter_placeholder,
-                pk_cols=self._pk_cols,
-                rows=batch,
+                pk_cols=self._table.primary_key_column_names,
+                column_names=set(batch.column_names),
                 schema_name=self._table.schema_name,
                 table_name=self._table.table_name,
             )
-            self._db.connection.execute(sql)
-
-    def upsert_rows(
-        self,
-        *,
-        rows: domain.Rows,
-        add: bool = True,
-        update: bool = True,
-        delete: bool = True,
-        ignore_missing_key_cols: bool = True,
-        ignore_extra_key_cols: bool = True,
-    ) -> None:
-        if self._read_only:
-            raise exceptions.DatabaseIsReadOnly()
-
-        pk_col_names = {col.column_name for col in self._pk_cols}
-        # col_names = pk_col_names | self._change_tracking_columns
-        # dest_rows = self.all(col_names)
-        dest_rows = self.keys(True)
-        if dest_rows.is_empty:
-            logger.info(f"{self.full_table_name} is empty so the source rows will be fully loaded.")
-            self.add(rows)
-        else:
-            changes = dest_rows.compare(
-                rows=rows,
-                key_cols=pk_col_names,
-                compare_cols=self._change_tracking_columns,
-                ignore_missing_key_cols=ignore_missing_key_cols,
-                ignore_extra_key_cols=ignore_extra_key_cols,
+            pk_cols = sorted(self._table.primary_key_column_names)
+            non_pk_cols = sorted(
+                col
+                for col in self._table.column_names
+                if col not in self._table.primary_key_column_names
             )
-            common_cols = self.table.column_names & set(rows.column_names)
-            if changes.rows_added.row_count and add:
-                new_rows = self.fetch_rows_by_primary_key_values(
-                    rows=changes.rows_added, cols=common_cols
-                )
-                self.add(new_rows)
-            if changes.rows_deleted.row_count and delete:
-                self.delete(changes.rows_deleted)
-            if changes.rows_updated.row_count and update:
-                updated_rows = self.fetch_rows_by_primary_key_values(
-                    rows=changes.rows_updated, cols=common_cols
-                )
-                self.update(updated_rows)
+            unordered_params = batch.as_dicts()
+            param_order = non_pk_cols + pk_cols
+            ordered_params = [
+                {k: row[k] for k in param_order} for row in unordered_params
+            ]
+            self._db.connection.execute(sql, params=ordered_params, return_rows=False)

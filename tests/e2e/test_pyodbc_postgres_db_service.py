@@ -1,11 +1,77 @@
-import datetime
-import os
+import pathlib
 
 import pyodbc
-import pytest
 
 import py_db_adapter as pda
 
+
+def test_inspect_table(postgres_pyodbc_db_uri: str):
+    db_service = pda.PostgresPyodbcDbService(
+        db_name="pg_local",
+        pyodbc_uri=postgres_pyodbc_db_uri,
+        cache_dir=pathlib.Path(r"C:\Users\marks\py\py-db-adapter\.cache"),
+    )
+    table_def = db_service.inspect_table(
+        schema_name="sales",
+        table_name="customer"
+    )
+    assert table_def.column_names == {
+        "customer_first_name",
+        "customer_id",
+        "customer_last_name",
+        "date_added",
+        "date_updated",
+    }
+
+
+def test_upsert_with_explicit_cols(cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str):
+    db_service = pda.PostgresPyodbcDbService(
+        db_name="pg_local",
+        pyodbc_uri=postgres_pyodbc_db_uri,
+        cache_dir=cache_dir,
+    )
+    db_service.upsert_table(
+        src_db=db_service,
+        src_schema_name="sales",
+        src_table_name="customer",
+        dest_schema_name="sales",
+        dest_table_name="customer2",
+        pk_cols={"customer_id"},
+        compare_cols={"customer_first_name", "customer_last_name"},
+        add=True,
+        update=True,
+        delete=True,
+    )
+    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
+        sql = "SELECT * FROM sales.customer2"
+        result = con.execute(sql).fetchall()
+        for row in result:
+            print(result)
+
+
+def test_upsert_with_default_cols(postgres_pyodbc_db_uri: str):
+    db_service = pda.PostgresPyodbcDbService(
+        db_name="pg_local",
+        pyodbc_uri=postgres_pyodbc_db_uri,
+        cache_dir=pathlib.Path(r"C:\Users\marks\py\py-db-adapter\.cache"),
+    )
+    db_service.upsert_table(
+        src_db=db_service,
+        src_schema_name="sales",
+        src_table_name="customer",
+        dest_schema_name="sales",
+        dest_table_name="customer2",
+        pk_cols=None,
+        compare_cols=None,
+        add=True,
+        update=True,
+        delete=True,
+    )
+    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
+        sql = "SELECT * FROM sales.customer2"
+        result = con.execute(sql).fetchall()
+        for row in result:
+            print(result)
 
 # @pytest.fixture(scope="session")
 # def backup_customer_sql_table_adapter(
