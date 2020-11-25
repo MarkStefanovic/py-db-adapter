@@ -101,8 +101,11 @@ class Rows:
         new_rows = [tuple(v for _, v in sorted(row.items())) for row in rows]
         return Rows(column_names=column_names, rows=new_rows)
 
-    def first_value(self) -> typing.Any:
-        return self._rows[0][0]
+    def first_value(self) -> typing.Optional[typing.Any]:
+        if self.is_empty:
+            return None
+        else:
+            return self._rows[0][0]
 
     @classmethod
     def from_lookup_table(

@@ -70,6 +70,8 @@ VALUES
     ,   '{''What does this button do?''}'
     )
 ;
+SELECT SETVAL('hr.employee_employee_id_seq', (SELECT MAX(employee_id) FROM hr.employee) + 1);
+
 
 DROP TABLE IF EXISTS sales.customer CASCADE;
 CREATE TABLE IF NOT EXISTS sales.customer (
@@ -97,6 +99,8 @@ VALUES
 ,   (8, 'Mandie', 'Mandelbrot', CAST('2010-09-30 01:32:33' AS TIMESTAMP))
 ,   (9, 'Steve', 'Smith', CAST('2010-04-05 06:37:38' AS TIMESTAMP))
 ;
+SELECT SETVAL('sales.customer_customer_id_seq', (SELECT MAX(customer_id) FROM sales.customer) + 1);
+
 
 DROP TABLE IF EXISTS sales.employee_customer CASCADE;
 CREATE TABLE sales.employee_customer (
@@ -112,9 +116,6 @@ VALUES
 ,   (1, 2)
 ;
 
-SELECT SETVAL('sales.customer_customer_id_seq', (SELECT MAX(customer_id) FROM sales.customer) + 1);
-
-
 
 DROP TABLE IF EXISTS sales.customer2 CASCADE;
 CREATE TABLE IF NOT EXISTS sales.customer2 (
@@ -125,17 +126,3 @@ CREATE TABLE IF NOT EXISTS sales.customer2 (
 ,   date_updated TIMESTAMP NULL
 );
 ALTER TABLE sales.customer2 OWNER TO postgres;
-INSERT INTO sales.customer2 (
-    customer_id
-,   customer_first_name
-,   customer_last_name
-,   date_added
-,   date_updated
-)
-SELECT
-    customer_id
-,   customer_first_name
-,   customer_last_name
-,   date_added
-,   date_updated
-FROM sales.customer;

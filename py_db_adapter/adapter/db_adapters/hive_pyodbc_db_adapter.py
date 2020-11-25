@@ -36,21 +36,22 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
             schema_name=schema_name, table_name=table_name
         )
         sql = f"DESCRIBE EXTENDED {full_table_name}"
-        result = self._con.execute(sql)
+        result = self.connection.execute(sql)
+
         # sourcery skip: remove-unnecessary-else
-        if result.is_empty:
-            raise domain.exceptions.TableDoesNotExist(
-                table_name=table_name, schema_name=schema_name
-            )
-        else:
+        if result and not result.is_empty:
             for row in result.as_tuples():
                 if row[0] == "Detailed Table Information":
-                    num_rows_match = re.search(".*, numRows=(\d+), .*", row[1])
+                    num_rows_match = re.search(r".*, numRows=(\d+), .*", row[1])
                     if num_rows_match:
                         return int(num_rows_match.group(1))
             raise domain.exceptions.FastRowCountFailed(
                 table_name=table_name,
                 error_message=f"DESCRIBE EXTENDED {table_name} did not include numRows.",
+            )
+        else:
+            raise domain.exceptions.TableDoesNotExist(
+                table_name=table_name, schema_name=schema_name
             )
 
     @property
@@ -66,4 +67,7 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
     def tables(self) -> typing.Set[str]:
         sql = "SHOW TABLES"
         rows = self._con.execute(sql)
-        return {row[0] for row in rows.as_tuples()}
+        if rows:
+            return {row[0] for row in rows.as_tuples()}
+        else:
+            return set()

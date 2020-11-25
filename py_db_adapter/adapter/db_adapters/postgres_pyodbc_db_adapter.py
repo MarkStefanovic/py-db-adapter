@@ -33,22 +33,31 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
                 f"A schema is required for PostgresPyodbcDbAdapter's fast_row_count method"
             )
 
-        sql = f"""
-            SELECT
-                (reltuples / relpages)
-                * (
-                    pg_relation_size('{schema_name}.{table_name}') / 
-                    current_setting('block_size')::INTEGER
-                ) AS rows
-            FROM pg_class
-            WHERE
-                relname = '{table_name}'
+        sql = """
+            SELECT n_live_tup
+            FROM   pg_stat_all_tables
+            WHERE  schemaname = ?
+            AND    relname = ?
         """
-        result = self.connection.execute(sql)
+        result = self.connection.execute(
+            sql, [{"schema_name": schema_name, "table_name": table_name}]
+        )
+
         if result is None or result.is_empty:
             return None
-        else:
-            return result.first_value()
+
+        row_ct = result.first_value()
+
+        if row_ct != 0:
+            return row_ct
+
+        result = self.connection.execute(
+            f'SELECT COUNT(*) AS row_ct FROM "{schema_name}"."{table_name}"'
+        )
+        if result is None or result.is_empty:
+            return None
+
+        return result.first_value()
 
     @property
     def sql_adapter(self) -> sql_adapters.PostgreSQLAdapter:
@@ -61,12 +70,18 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
             raise domain.exceptions.SchemaIsRequired(
                 f"A schema is required for PostgresPyodbcDbAdapter's table_exists method"
             )
+
         sql = f"""
            SELECT COUNT(*) AS ct
            FROM   information_schema.tables 
-           WHERE  table_schema = '{schema_name}'
-           AND    table_name   = '{table_name}'
-        );
+           WHERE  table_schema = ?
+           AND    table_name   = ?
         """
-        result = self._con.execute(sql).first_value()
-        return result > 0
+        result = self.connection.execute(
+            sql, [{"schema_name": schema_name, "table_name": table_name}]
+        )
+        if result:
+            row_ct = result.first_value()
+            if row_ct:
+                return row_ct > 0
+        return False

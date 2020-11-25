@@ -33,26 +33,35 @@ def run_queries_in_file(*, con: pyodbc.Connection, fp: pathlib.Path) -> None:
             cur.execute(sql)
 
 
-def setup_db(con: pyodbc.Connection, /) -> None:
+def set_up_db(con: pyodbc.Connection, /) -> None:
     fp = pathlib.Path(__file__).parent / "fixtures" / "setup_db.sql"
     run_queries_in_file(con=con, fp=fp)
 
 
-@pytest.mark.fixture(scope="session")
-def engine() -> sa.engine.Engine:
-    return sa.create_engine(os.environ["SQLALCHEMY_URI"])
+def tear_down_db(con: pyodbc.Connection, /) -> None:
+    fp = pathlib.Path(__file__).parent / "fixtures" / "setup_db.sql"
+    run_queries_in_file(con=con, fp=fp)
 
 
-@pytest.fixture(scope="session")
-def postgres_pyodbc_db_uri() -> str:
-    return os.environ["PYODBC_URI"]
+# @pytest.mark.fixture(scope="session")
+# def engine() -> sa.engine.Engine:
+#     return sa.create_engine(os.environ["SQLALCHEMY_URI"])
 
 
-@pytest.fixture(scope="session")
-def pyodbc_postgres_con(postgres_pyodbc_db_uri: str) -> pyodbc.Connection:
-    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
-        setup_db(con)
-        yield con
+@pytest.fixture(scope="function")
+def postgres_pyodbc_db_uri() -> typing.Generator[str, None, None]:
+    db_uri = os.environ["PYODBC_URI"]
+    with pyodbc.connect(db_uri) as con:
+        set_up_db(con)
+        yield db_uri
+        tear_down_db(con)
+
+
+# @pytest.fixture(scope="session")
+# def pyodbc_postgres_con(postgres_pyodbc_db_uri: str) -> pyodbc.Connection:
+#     with pyodbc.connect(postgres_pyodbc_db_uri) as con:
+#         setup_db(con)
+#         yield con
 
 
 # @pytest.fixture(scope="session")

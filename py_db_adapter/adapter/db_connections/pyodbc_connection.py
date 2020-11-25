@@ -6,7 +6,6 @@ import types
 import typing
 
 import pyodbc
-import pysnooper
 
 from py_db_adapter import domain
 from py_db_adapter.adapter import db_connection, pyodbc_inspector
@@ -56,12 +55,15 @@ class PyodbcConnection(db_connection.DbConnection):
 
             if returns_rows:
                 if rows := result.fetchall():
-                    column_names = [description[0] for description in self._cur.description]
+                    column_names = [
+                        description[0] for description in self._cur.description
+                    ]
                     return domain.Rows(
                         column_names=column_names, rows=[tuple(row) for row in rows]
                     )
                 else:
                     return domain.Rows(column_names=[], rows=[])
+            return None
 
     def commit(self) -> None:
         if self._con is None:
