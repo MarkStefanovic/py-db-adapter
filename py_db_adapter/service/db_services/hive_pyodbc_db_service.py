@@ -3,7 +3,7 @@ import pathlib
 import typing
 
 from py_db_adapter import domain, adapter
-from py_db_adapter.service import db_service, DbService
+from py_db_adapter.service import db_service
 
 __all__ = ("HivePyodbcDbService",)
 
@@ -55,7 +55,7 @@ class HivePyodbcDbService(db_service.DbService):
     def upsert_table(
         self,
         *,
-        src_db: DbService,
+        src_db: db_service.DbService,
         src_schema_name: typing.Optional[str],
         src_table_name: str,
         dest_schema_name: typing.Optional[str],
@@ -65,5 +65,6 @@ class HivePyodbcDbService(db_service.DbService):
         add: bool = True,
         update: bool = True,
         delete: bool = True,
+        batch_size: int = 1_000,
     ) -> None:
         raise domain.exceptions.DatabaseIsReadOnly()

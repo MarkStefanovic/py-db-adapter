@@ -41,7 +41,7 @@ def test_postgres_float_column_sql_adapter_literal() -> None:
     assert actual == expected
 
 
-def test_create(postgres_pyodbc_db_uri: str) -> None:
+def test_create_table_sql(postgres_pyodbc_db_uri: str) -> None:
     sql_adapter = adapter.PostgreSQLAdapter()
     with pyodbc.connect(postgres_pyodbc_db_uri) as con:
         table = adapter.pyodbc_inspect_table(
@@ -60,7 +60,7 @@ def test_create(postgres_pyodbc_db_uri: str) -> None:
     assert actual == expected, f"{actual=}/n{expected=}"
 
 
-def test_drop() -> None:
+def test_drop_table_sql() -> None:
     sql_adapter = adapter.PostgreSQLAdapter()
     assert (
         sql_adapter.drop(schema_name="hr", table_name="employee")
@@ -68,7 +68,7 @@ def test_drop() -> None:
     )
 
 
-def test_row_count() -> None:
+def test_row_count_sql() -> None:
     sql_adapter = adapter.PostgreSQLAdapter()
     assert (
         sql_adapter.row_count(schema_name="hr", table_name="employee")
@@ -76,7 +76,7 @@ def test_row_count() -> None:
     )
 
 
-def test_truncate() -> None:
+def test_truncate_table_sql() -> None:
     sql_adapter = adapter.PostgreSQLAdapter()
     assert (
         sql_adapter.truncate(schema_name="hr", table_name="employee")

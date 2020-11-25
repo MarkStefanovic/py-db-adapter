@@ -1,14 +1,12 @@
-from py_db_adapter.adapter.db_adapters import postgres_pyodbc_db_adapter
-from py_db_adapter.adapter.db_connections import pyodbc_connection
-from py_db_adapter.adapter.sql_adapters import postgres_sql_adapter
+from py_db_adapter import adapter
 
 
 def test_postgres_pyodbc_db_adapter_table_exists(postgres_pyodbc_db_uri: str) -> None:
-    sql_adapter = postgres_sql_adapter.PostgreSQLAdapter()
-    con = pyodbc_connection.PyodbcConnection(
+    sql_adapter = adapter.PostgreSQLAdapter()
+    con = adapter.PyodbcConnection(
         db_name="test_con", fast_executemany=False, uri=postgres_pyodbc_db_uri
     )
-    db_adapter = postgres_pyodbc_db_adapter.PostgresPyodbcDbAdapter(
+    db_adapter = adapter.PostgresPyodbcDbAdapter(
         con=con, postgres_sql_adapter=sql_adapter
     )
     with con:
@@ -19,11 +17,11 @@ def test_postgres_pyodbc_db_adapter_table_exists(postgres_pyodbc_db_uri: str) ->
 
 
 def test_postgres_pyodbc_db_adapter_fast_row_count(postgres_pyodbc_db_uri: str) -> None:
-    sql_adapter = postgres_sql_adapter.PostgreSQLAdapter()
-    con = pyodbc_connection.PyodbcConnection(
+    sql_adapter = adapter.PostgreSQLAdapter()
+    con = adapter.PyodbcConnection(
         db_name="test_con", fast_executemany=False, uri=postgres_pyodbc_db_uri
     )
-    db_adapter = postgres_pyodbc_db_adapter.PostgresPyodbcDbAdapter(
+    db_adapter = adapter.PostgresPyodbcDbAdapter(
         con=con, postgres_sql_adapter=sql_adapter
     )
     with con:
