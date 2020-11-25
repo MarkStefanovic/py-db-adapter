@@ -86,12 +86,15 @@ class Rows:
 
     @staticmethod
     def concat(rows: typing.List[Rows]) -> Rows:
-        column_names = rows[0].column_names
-        all_rows = [row for batch in rows for row in batch.as_tuples()]
-        return Rows(
-            column_names=column_names,
-            rows=all_rows,
-        )
+        if rows:
+            column_names = rows[0].column_names
+            all_rows = [row for batch in rows for row in batch.as_tuples()]
+            return Rows(
+                column_names=column_names,
+                rows=all_rows,
+            )
+        else:
+            return Rows(column_names=[], rows=[])
 
     @classmethod
     def from_dicts(
@@ -106,23 +109,6 @@ class Rows:
             return None
         else:
             return self._rows[0][0]
-
-    @classmethod
-    def from_lookup_table(
-        cls,
-        *,
-        lookup_table: typing.Dict[Row, Row],
-        key_columns: typing.Set[str],
-        value_columns: typing.Set[str],
-    ) -> Rows:
-        ordered_key_col_names = sorted(key_columns)
-        ordered_value_col_names = sorted(value_columns)
-        column_names = ordered_key_col_names + ordered_value_col_names
-        rows = [
-            tuple(itertools.chain(keys, values))
-            for keys, values in lookup_table.items()
-        ]
-        return Rows(column_names=column_names, rows=rows)
 
     @property
     def is_empty(self) -> bool:

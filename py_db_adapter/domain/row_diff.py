@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import logging
 import typing
 
@@ -130,19 +131,34 @@ def compare_rows(
         )
         updates = {}
     return {
-        "added": rows.Rows.from_lookup_table(
+        "added": rows_from_lookup_table(
             lookup_table=added,
             key_columns=common_key_cols,
             value_columns=common_compare_cols,
         ),
-        "deleted": rows.Rows.from_lookup_table(
+        "deleted": rows_from_lookup_table(
             lookup_table=deleted,
             key_columns=common_key_cols,
             value_columns=common_compare_cols,
         ),
-        "updated": rows.Rows.from_lookup_table(
+        "updated": rows_from_lookup_table(
             lookup_table=updates,
             key_columns=common_key_cols,
             value_columns=common_compare_cols,
         ),
     }
+
+
+def rows_from_lookup_table(
+    *,
+    lookup_table: typing.Dict[rows.Row, rows.Row],
+    key_columns: typing.Set[str],
+    value_columns: typing.Set[str],
+) -> rows.Rows:
+    ordered_key_col_names = sorted(key_columns)
+    ordered_value_col_names = sorted(value_columns)
+    column_names = ordered_key_col_names + ordered_value_col_names
+    new_rows = [
+        tuple(itertools.chain(keys, values)) for keys, values in lookup_table.items()
+    ]
+    return rows.Rows(column_names=column_names, rows=new_rows)

@@ -40,11 +40,3 @@ def test_as_lookup_table(dummy_rows: Rows) -> None:
         ("i",): (8,),
         ("j",): (9,),
     }
-
-
-def test_from_lookup_table(dummy_rows: Rows) -> None:
-    lkp_table = dummy_rows.as_lookup_table(key_columns={"name"})
-    actual = Rows.from_lookup_table(
-        lookup_table=lkp_table, key_columns={"name"}, value_columns={"age"}
-    )
-    assert actual == dummy_rows, f"Expected: {dummy_rows!s}\nActual: {actual!s}"
