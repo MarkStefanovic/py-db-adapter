@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import itertools
 import typing
 
 __all__ = (
@@ -23,28 +22,12 @@ class Rows:
         self._column_names = list(column_names)
         self._rows = list(rows)
 
+        self._column_indices = {
+            col_name: i for i, col_name in enumerate(self._column_names)
+        }
+
     def as_dicts(self) -> typing.List[typing.Dict[str, typing.Hashable]]:
         return [dict(sorted(zip(self._column_names, row))) for row in self._rows]
-
-    def as_lookup_table(
-        self,
-        *,
-        key_columns: typing.Set[str],
-        value_columns: typing.Optional[typing.Set[str]] = None,
-    ) -> typing.Dict[Row, Row]:
-        pk_cols = sorted(set(key_columns))
-        if value_columns:
-            value_cols = sorted(set(value_columns))
-        else:
-            value_cols = sorted(
-                {col for col in self._column_names if col not in pk_cols}
-            )
-        return {
-            tuple(row[self.column_indices[col_name]] for col_name in pk_cols): tuple(
-                row[self.column_indices[col_name]] for col_name in value_cols
-            )
-            for row in self._rows
-        }
 
     def as_tuples(self) -> typing.List[Row]:
         return self._rows
@@ -55,16 +38,12 @@ class Rows:
             yield Rows(column_names=self._column_names, rows=chunk)
 
     def column(self, /, column_name: str) -> typing.List[typing.Hashable]:
-        col_index = self.column_indices[column_name]
+        col_index = self._column_indices[column_name]
         return [row[col_index] for row in self._rows]
 
     @property
     def column_names(self) -> typing.List[str]:
         return self._column_names
-
-    @property
-    def column_indices(self) -> typing.Dict[str, int]:
-        return {col_name: i for i, col_name in enumerate(self._column_names)}
 
     def compare(
         self,
@@ -121,7 +100,7 @@ class Rows:
     def subset(self, column_names: typing.Set[str]) -> Rows:
         cols = sorted(column_names)
         rows = [
-            tuple(row[self.column_indices[col_name]] for col_name in cols)
+            tuple(row[self._column_indices[col_name]] for col_name in cols)
             for row in self._rows
         ]
         return Rows(column_names=cols, rows=rows)

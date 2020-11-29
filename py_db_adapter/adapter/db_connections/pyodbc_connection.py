@@ -31,39 +31,58 @@ class PyodbcConnection(db_connection.DbConnection):
         self,
         sql: str,
         params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
-        returns_rows: bool = True,
-    ) -> typing.Optional[domain.Rows]:
+    ) -> None:
         std_sql = domain.standardize_sql(sql)
         if self._con is None:
             raise exceptions.DeveloperError(
                 "Attempted to run .execute() outside of a with block."
             )
+        logger.debug(f"Executing sql:\n\t{std_sql}\n\tparams={params}")
+        positional_params = [tuple(param.values()) for param in params or {}]
+        if self._cur is None:
+            self._cur = self._con.cursor()
+            self._cur.fast_executemany = self._fast_executemany
+            logger.debug("Opened cursor.")
+
+        if params is None:
+            self._cur.execute(std_sql)
+        elif len(params) > 1:
+            self._cur.executemany(std_sql, positional_params)
         else:
-            logger.debug(f"Executing sql:\n\t{std_sql}\n\tparams={params}")
-            positional_params = [tuple(param.values()) for param in params or {}]
-            if self._cur is None:
-                self._cur = self._con.cursor()
-                self._cur.fast_executemany = self._fast_executemany
-                logger.debug("Opened cursor.")
+            self._cur.execute(std_sql, positional_params[0])
 
-            if params is None:
-                result = self._cur.execute(std_sql)
-            elif len(params) > 1:
-                result = self._cur.executemany(std_sql, positional_params)
-            else:
-                result = self._cur.execute(std_sql, positional_params[0])
+    def fetch(
+        self,
+        sql: str,
+        params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
+    ) -> domain.Rows:
+        std_sql = domain.standardize_sql(sql)
+        if self._con is None:
+            raise exceptions.DeveloperError(
+                "Attempted to run .execute() outside of a with block."
+            )
 
-            if returns_rows:
-                if rows := result.fetchall():
-                    column_names = [
-                        description[0] for description in self._cur.description
-                    ]
-                    return domain.Rows(
-                        column_names=column_names, rows=[tuple(row) for row in rows]
-                    )
-                else:
-                    return domain.Rows(column_names=[], rows=[])
-            return None
+        logger.debug(f"Executing sql:\n\t{std_sql}\n\tparams={params}")
+        positional_params = [tuple(param.values()) for param in params or {}]
+        if self._cur is None:
+            self._cur = self._con.cursor()
+            self._cur.fast_executemany = self._fast_executemany
+            logger.debug("Opened cursor.")
+
+        if params is None:
+            result = self._cur.execute(std_sql)
+        elif len(params) > 1:
+            result = self._cur.executemany(std_sql, positional_params)
+        else:
+            result = self._cur.execute(std_sql, positional_params[0])
+
+        if rows := result.fetchall():
+            column_names = [description[0] for description in self._cur.description]
+            return domain.Rows(
+                column_names=column_names, rows=[tuple(row) for row in rows]
+            )
+        else:
+            return domain.Rows(column_names=[], rows=[])
 
     def commit(self) -> None:
         if self._con is None:

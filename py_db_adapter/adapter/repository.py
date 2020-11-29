@@ -43,7 +43,7 @@ class Repository:
                 rows=batch,
             )
             params = batch.as_dicts()
-            self._db.connection.execute(sql, params=params, returns_rows=False)
+            self._db.connection.execute(sql, params=params)
 
     def all(self, /, columns: typing.Optional[typing.Set[str]] = None) -> domain.Rows:
         sql = self._db.sql_adapter.select_all(
@@ -51,7 +51,7 @@ class Repository:
             table_name=self.table.table_name,
             columns=columns,
         )
-        result = self._db.connection.execute(sql, returns_rows=True)
+        result = self._db.connection.fetch(sql)
         if result is None:
             return domain.Rows(
                 column_names=columns or sorted(self._table.column_names),
@@ -64,9 +64,7 @@ class Repository:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
 
-        self._db.connection.execute(
-            self._db.sql_adapter.definition(self._table), returns_rows=False
-        )
+        self._db.connection.execute(self._db.sql_adapter.definition(self._table))
 
     def delete(self, /, rows: domain.Rows) -> None:
         if self._read_only:
@@ -81,7 +79,7 @@ class Repository:
         )
         for batch in rows.batches(self._batch_size):
             params = batch.as_dicts()
-            self._db.connection.execute(sql, params, returns_rows=False)
+            self._db.connection.execute(sql, params)
 
     def drop(self) -> None:
         if self._read_only:
@@ -91,7 +89,7 @@ class Repository:
             schema_name=self._table.schema_name,
             table_name=self._table.table_name,
         )
-        self._db.connection.execute(sql, returns_rows=False)
+        self._db.connection.execute(sql)
 
     @property
     def full_table_name(self) -> str:
@@ -115,12 +113,10 @@ class Repository:
                 select_cols=cols,
             )
             if len(self._pk_cols) == 1:  # where-clause uses IN (...)
-                row_batch = self._db.connection.execute(sql, returns_rows=True)
+                row_batch = self._db.connection.fetch(sql)
             else:
                 pks = batch.subset(self._table.primary_key_column_names).as_dicts()
-                row_batch = self._db.connection.execute(
-                    sql, params=pks, returns_rows=True
-                )
+                row_batch = self._db.connection.fetch(sql, params=pks)
             # params = batch.as_dicts()
             # row_batch = self._db.connection.execute(sql, params=params)
             if row_batch:
@@ -148,7 +144,7 @@ class Repository:
                 change_tracking_cols=set(),
                 include_change_tracking_cols=include_change_tracking_cols,
             )
-        result = self._db.connection.execute(sql, returns_rows=True)
+        result = self._db.connection.fetch(sql)
         if result is None:
             return domain.Rows(
                 column_names=sorted(
@@ -162,12 +158,11 @@ class Repository:
 
     def row_count(self) -> typing.Optional[int]:
         """Get the number of rows in a table"""
-        result = self._db.connection.execute(
+        result = self._db.connection.fetch(
             self._db.sql_adapter.row_count(
                 schema_name=self._table.schema_name,
                 table_name=self._table.table_name,
             ),
-            returns_rows=True,
         )
         if result:
             return result.first_value()
@@ -186,7 +181,7 @@ class Repository:
             schema_name=self._table.schema_name,
             table_name=self._table.table_name,
         )
-        self._db.connection.execute(sql, returns_rows=False)
+        self._db.connection.execute(sql)
 
     def update(self, /, rows: domain.Rows) -> None:
         if self._read_only:
@@ -211,4 +206,4 @@ class Repository:
             ordered_params = [
                 {k: row[k] for k in param_order} for row in unordered_params
             ]
-            self._db.connection.execute(sql, params=ordered_params, returns_rows=False)
+            self._db.connection.execute(sql, params=ordered_params)

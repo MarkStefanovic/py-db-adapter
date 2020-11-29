@@ -36,7 +36,7 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
             schema_name=schema_name, table_name=table_name
         )
         sql = f"DESCRIBE EXTENDED {full_table_name}"
-        result = self.connection.execute(sql)
+        result = self.connection.fetch(sql)
 
         # sourcery skip: remove-unnecessary-else
         if result and not result.is_empty:
@@ -66,7 +66,7 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
     @functools.cached_property
     def tables(self) -> typing.Set[str]:
         sql = "SHOW TABLES"
-        rows = self._con.execute(sql)
+        rows = self._con.fetch(sql)
         if rows:
             return {row[0] for row in rows.as_tuples()}
         else:

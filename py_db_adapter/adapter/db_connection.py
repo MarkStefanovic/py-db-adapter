@@ -20,8 +20,15 @@ class DbConnection(abc.ABC):
         self,
         sql: str,
         params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
-        returns_rows: bool = True,
-    ) -> typing.Optional[domain.Rows]:
+    ) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def fetch(
+        self,
+        sql: str,
+        params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
+    ) -> domain.Rows:
         raise NotImplementedError
 
     @abc.abstractmethod

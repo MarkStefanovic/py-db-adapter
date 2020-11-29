@@ -39,7 +39,7 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
             WHERE  schemaname = ?
             AND    relname = ?
         """
-        result = self.connection.execute(
+        result = self.connection.fetch(
             sql, [{"schema_name": schema_name, "table_name": table_name}]
         )
 
@@ -51,7 +51,7 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
         if row_ct != 0:
             return row_ct
 
-        result = self.connection.execute(
+        result = self.connection.fetch(
             f'SELECT COUNT(*) AS row_ct FROM "{schema_name}"."{table_name}"'
         )
         if result is None or result.is_empty:
@@ -77,7 +77,7 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
            WHERE  table_schema = ?
            AND    table_name   = ?
         """
-        result = self.connection.execute(
+        result = self.connection.fetch(
             sql, [{"schema_name": schema_name, "table_name": table_name}]
         )
         if result:

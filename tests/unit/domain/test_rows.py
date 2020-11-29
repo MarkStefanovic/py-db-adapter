@@ -25,18 +25,3 @@ def test_as_dicts(dummy_rows: Rows) -> None:
         {"name": "i", "age": 8},
         {"name": "j", "age": 9},
     ]
-
-
-def test_as_lookup_table(dummy_rows: Rows) -> None:
-    assert dummy_rows.as_lookup_table(key_columns={"name"}, value_columns={"age"}) == {
-        ("a",): (0,),
-        ("b",): (1,),
-        ("c",): (2,),
-        ("d",): (3,),
-        ("e",): (4,),
-        ("f",): (5,),
-        ("g",): (6,),
-        ("h",): (7,),
-        ("i",): (8,),
-        ("j",): (9,),
-    }

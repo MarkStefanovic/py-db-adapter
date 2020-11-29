@@ -107,11 +107,15 @@ def compare_rows(
                 actual_key_cols=src_key_cols, expected_key_cols=key_cols
             )
 
-    src_lkp_tbl = src_rows.as_lookup_table(
-        key_columns=common_key_cols, value_columns=common_compare_cols
+    src_lkp_tbl = rows_to_lookup_table(
+        rs=src_rows,
+        key_columns=common_key_cols,
+        value_columns=common_compare_cols,
     )
-    dest_lkp_tbl = dest_rows.as_lookup_table(
-        key_columns=common_key_cols, value_columns=common_compare_cols
+    dest_lkp_tbl = rows_to_lookup_table(
+        rs=dest_rows,
+        key_columns=common_key_cols,
+        value_columns=common_compare_cols,
     )
     src_key_set = set(src_lkp_tbl.keys())
     dest_key_set = set(dest_lkp_tbl.keys())
@@ -162,3 +166,21 @@ def rows_from_lookup_table(
         tuple(itertools.chain(keys, values)) for keys, values in lookup_table.items()
     ]
     return rows.Rows(column_names=column_names, rows=new_rows)
+
+
+def rows_to_lookup_table(
+    rs: rows.Rows,
+    key_columns: typing.Set[str],
+    value_columns: typing.Optional[typing.Set[str]] = None,
+) -> typing.Dict[rows.Row, rows.Row]:
+    pk_cols = sorted(set(key_columns))
+    if value_columns:
+        value_cols = sorted(set(value_columns))
+    else:
+        value_cols = sorted(
+            {col for col in rs.column_names if col not in pk_cols}
+        )
+    return {
+        tuple(row[col] for col in pk_cols): tuple(row[col] for col in value_cols)
+        for row in rs.as_dicts()
+    }
