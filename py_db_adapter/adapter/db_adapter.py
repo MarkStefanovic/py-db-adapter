@@ -18,7 +18,7 @@ class DbAdapter(abc.ABC):
     @abc.abstractmethod
     def fast_row_count(
         self, *, table_name: str, schema_name: typing.Optional[str] = None
-    ) -> typing.Optional[int]:
+    ) -> int:
         raise NotImplementedError
 
     @property

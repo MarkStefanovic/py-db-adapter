@@ -31,14 +31,12 @@ class Column(abc.ABC):
         column_name: str,
         nullable: bool,
         autoincrement: bool,
-        primary_key: bool,
     ):
         self._schema_name = schema_name
         self._table_name = table_name
         self._column_name = column_name
         self._nullable = nullable
         self._autoincrement = autoincrement
-        self._primary_key = primary_key
 
     @property
     def autoincrement(self) -> bool:
@@ -55,7 +53,6 @@ class Column(abc.ABC):
             column_name=self._column_name,
             nullable=self._nullable,
             autoincrement=self._autoincrement,
-            primary_key=self._primary_key,
         )
 
     @property
@@ -66,15 +63,6 @@ class Column(abc.ABC):
     @property
     def nullable(self) -> bool:
         return self._nullable
-
-    @property
-    def primary_key(self) -> bool:
-        return self._primary_key
-
-    @primary_key.setter
-    def primary_key(self, is_primary_key: bool) -> None:
-        """If a table does not have a primary key, then we have to assign it one after the fact."""
-        self._primary_key = is_primary_key
 
     @property
     @abc.abstractmethod
@@ -98,7 +86,6 @@ class Column(abc.ABC):
         return sa.Column(
             self._column_name,
             self.sqlalchemy_data_type,
-            primary_key=self._primary_key,
             nullable=self._nullable,
         )
 
@@ -140,8 +127,7 @@ class Column(abc.ABC):
         return (
             f"{self.__class__.__name__}(schema_name={self._schema_name}, "
             f"table_name={self._table_name}, column_name={self._column_name}, "
-            f"nullable={self._nullable}, autoincrement={self._autoincrement}, "
-            f"primary_key={self._primary_key})"
+            f"nullable={self._nullable}, autoincrement={self._autoincrement})"
         )
 
 
@@ -153,7 +139,6 @@ class BooleanColumn(Column):
         table_name: str,
         column_name: str,
         nullable: bool,
-        primary_key: bool,
     ):
         super().__init__(
             schema_name=schema_name,
@@ -161,7 +146,6 @@ class BooleanColumn(Column):
             column_name=column_name,
             nullable=nullable,
             autoincrement=False,
-            primary_key=primary_key,
         )
 
     @property
@@ -185,7 +169,6 @@ class DateColumn(Column):
         table_name: str,
         column_name: str,
         nullable: bool,
-        primary_key: bool,
     ):
         super().__init__(
             schema_name=schema_name,
@@ -193,7 +176,6 @@ class DateColumn(Column):
             column_name=column_name,
             nullable=nullable,
             autoincrement=False,
-            primary_key=primary_key,
         )
 
     @property
@@ -217,7 +199,6 @@ class DateTimeColumn(Column):
         table_name: str,
         column_name: str,
         nullable: bool,
-        primary_key: bool,
     ):
         super().__init__(
             schema_name=schema_name,
@@ -225,7 +206,6 @@ class DateTimeColumn(Column):
             column_name=column_name,
             nullable=nullable,
             autoincrement=False,
-            primary_key=primary_key,
         )
 
     @property
@@ -249,7 +229,6 @@ class DecimalColumn(Column):
         table_name: str,
         column_name: str,
         nullable: bool,
-        primary_key: bool,
         precision: int,
         scale: int,
     ):
@@ -262,7 +241,6 @@ class DecimalColumn(Column):
             column_name=column_name,
             nullable=nullable,
             autoincrement=False,
-            primary_key=primary_key,
         )
 
     @property
@@ -294,7 +272,6 @@ class FloatColumn(Column):
         table_name: str,
         column_name: str,
         nullable: bool,
-        primary_key: bool,
     ):
         super().__init__(
             schema_name=schema_name,
@@ -302,7 +279,6 @@ class FloatColumn(Column):
             column_name=column_name,
             nullable=nullable,
             autoincrement=False,
-            primary_key=primary_key,
         )
 
     @property
@@ -327,7 +303,6 @@ class IntegerColumn(Column):
         table_name: str,
         column_name: str,
         nullable: bool,
-        primary_key: bool,
     ):
         super().__init__(
             schema_name=schema_name,
@@ -335,7 +310,6 @@ class IntegerColumn(Column):
             column_name=column_name,
             nullable=nullable,
             autoincrement=autoincrement,
-            primary_key=primary_key,
         )
 
     @property
@@ -359,7 +333,6 @@ class TextColumn(Column):
         table_name: str,
         column_name: str,
         nullable: bool,
-        primary_key: bool,
         max_length: typing.Optional[int],
     ):
         self._max_length = max_length
@@ -370,7 +343,6 @@ class TextColumn(Column):
             column_name=column_name,
             nullable=nullable,
             autoincrement=False,
-            primary_key=primary_key,
         )
 
     @property

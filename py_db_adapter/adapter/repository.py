@@ -73,7 +73,7 @@ class Repository:
         sql = self._db.sql_adapter.delete(
             schema_name=self._table.schema_name,
             table_name=self._table.table_name,
-            pk_cols=self._table.primary_key_column_names,
+            pk_cols=self._table.pk_cols,
             parameter_placeholder=self._db.connection.parameter_placeholder,
             row_cols=rows.column_names,
         )
@@ -115,7 +115,7 @@ class Repository:
             if len(self._pk_cols) == 1:  # where-clause uses IN (...)
                 row_batch = self._db.connection.fetch(sql)
             else:
-                pks = batch.subset(self._table.primary_key_column_names).as_dicts()
+                pks = batch.subset(self._table.pk_cols).as_dicts()
                 row_batch = self._db.connection.fetch(sql, params=pks)
             # params = batch.as_dicts()
             # row_batch = self._db.connection.execute(sql, params=params)
@@ -125,14 +125,14 @@ class Repository:
 
     @property
     def _pk_cols(self) -> typing.Set[domain.Column]:
-        return {col for col in self._table.columns if col.primary_key}
+        return {col for col in self._table.columns if col.column_name in self._table.pk_cols}
 
     def keys(self, /, include_change_tracking_cols: bool = True) -> domain.Rows:
         if include_change_tracking_cols:
             sql = self._db.sql_adapter.select_keys(
                 schema_name=self._table.schema_name,
                 table_name=self._table.table_name,
-                pk_cols=self._table.primary_key_column_names,
+                pk_cols=self._table.pk_cols,
                 change_tracking_cols=set(self._change_tracking_columns),
                 include_change_tracking_cols=include_change_tracking_cols,
             )
@@ -140,7 +140,7 @@ class Repository:
             sql = self._db.sql_adapter.select_keys(
                 schema_name=self._table.schema_name,
                 table_name=self._table.table_name,
-                pk_cols=self._table.primary_key_column_names,
+                pk_cols=self._table.pk_cols,
                 change_tracking_cols=set(),
                 include_change_tracking_cols=include_change_tracking_cols,
             )
@@ -148,7 +148,7 @@ class Repository:
         if result is None:
             return domain.Rows(
                 column_names=sorted(
-                    self._table.primary_key_column_names
+                    self._table.pk_cols
                     | set(self._change_tracking_columns)
                 ),
                 rows=[],
@@ -190,16 +190,16 @@ class Repository:
         for batch in rows.batches(self._batch_size):
             sql = self._db.sql_adapter.update(
                 parameter_placeholder=self._db.connection.parameter_placeholder,
-                pk_cols=self._table.primary_key_column_names,
+                pk_cols=self._table.pk_cols,
                 column_names=set(batch.column_names),
                 schema_name=self._table.schema_name,
                 table_name=self._table.table_name,
             )
-            pk_cols = sorted(self._table.primary_key_column_names)
+            pk_cols = sorted(self._table.pk_cols)
             non_pk_cols = sorted(
                 col
                 for col in self._table.column_names
-                if col not in self._table.primary_key_column_names
+                if col not in self._table.pk_cols
             )
             unordered_params = batch.as_dicts()
             param_order = non_pk_cols + pk_cols

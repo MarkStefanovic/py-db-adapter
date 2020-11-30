@@ -88,7 +88,7 @@ def test_inspect_table(cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str) -> 
         pyodbc_uri=postgres_pyodbc_db_uri,
         cache_dir=cache_dir,
     )
-    table_def = db_service.inspect_table(schema_name="sales", table_name="customer")
+    table_def = db_service._inspect_table(schema_name="sales", table_name="customer")
     assert table_def.column_names == {
         "customer_first_name",
         "customer_id",

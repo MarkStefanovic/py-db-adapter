@@ -27,7 +27,7 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
 
     def fast_row_count(
         self, *, table_name: str, schema_name: typing.Optional[str] = None
-    ) -> typing.Optional[int]:
+    ) -> int:
         if schema_name is None:
             raise domain.exceptions.SchemaIsRequired(
                 f"A schema is required for PostgresPyodbcDbAdapter's fast_row_count method"
@@ -42,9 +42,9 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
         result = self.connection.fetch(
             sql, [{"schema_name": schema_name, "table_name": table_name}]
         )
-
-        if result is None or result.is_empty:
-            return None
+        assert result is not None
+        if result.is_empty:
+            raise domain.exceptions.TableDoesNotExist(table_name=table_name, schema_name=schema_name)
 
         row_ct = result.first_value()
 
@@ -54,9 +54,7 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
         result = self.connection.fetch(
             f'SELECT COUNT(*) AS row_ct FROM "{schema_name}"."{table_name}"'
         )
-        if result is None or result.is_empty:
-            return None
-
+        assert result is not None
         return result.first_value()
 
     @property

@@ -2,88 +2,48 @@ from __future__ import annotations
 
 import typing
 
+import pydantic
+
 from py_db_adapter.domain import column
 
 __all__ = ("Table",)
 
 
-class Table:
-    def __init__(
-        self,
-        *,
-        schema_name: typing.Optional[str],
-        table_name: str,
-        columns: typing.Iterable[column.Column],
-        custom_pk_cols: typing.Optional[typing.Iterable[str]] = None,
-    ):
-        if not isinstance(schema_name, str):
-            raise ValueError(
-                f"schema_name must be either a string or None, but got {schema_name!r}."
-            )
-        if not isinstance(table_name, str):
-            raise ValueError(f"table_name must be a string, but got {table_name!r}.")
-        if not all(isinstance(col, column.Column) for col in columns):
-            raise ValueError(
-                f"columns must be a sequence of column.Column, but got {columns!r}."
-            )
+class Table(pydantic.BaseModel):
+    schema_name: typing.Optional[str]
+    table_name: str
+    columns: typing.Set[column.Column]
+    pk_cols: typing.Set[str]
+    compare_cols: typing.Optional[typing.Set[str]] = None
 
-        if custom_pk_cols:
-            cols = []
-            for col in columns:
-                if col.column_name in custom_pk_cols:
-                    col.primary_key = True
-                cols.append(col)
-            self._columns = set(cols)
-        else:
-            self._columns = set(columns)
+    class Config:
+        allow_mutation = False
+        anystr_strip_whitespace = True
+        min_anystr_length = 1
 
-        self._schema_name = schema_name
-        self._table_name = table_name
-
-    @property
-    def columns(self) -> typing.Set[column.Column]:
-        return self._columns
+    def add_column(self, /, col: column.Column) -> Table:
+        columns = self.columns | {col}
+        return self.copy(update={"columns": columns})
 
     @property
     def column_names(self) -> typing.Set[str]:
-        return {col.column_name for col in self._columns}
+        return {col.column_name for col in self.columns}
 
-    def copy(self, new_schema_name: str, new_table_name: str) -> Table:
-        columns = [
-            col.copy(new_schema_name=new_schema_name, new_table_name=new_table_name)
-            for col in self._columns
-        ]
-        return Table(
-            schema_name=new_schema_name,
-            table_name=new_table_name,
-            columns=columns,
-        )
-
-    @property
-    def primary_key_column_names(self) -> typing.Set[str]:
-        return {col.column_name for col in self._columns if col.primary_key}
-
-    @property
-    def schema_name(self) -> str:
-        return self._schema_name
-
-    @property
-    def table_name(self) -> str:
-        return self._table_name
+    def copy_table(self, schema_name: str, table_name: str) -> Table:
+        return self.copy(update={"schema_name": schema_name, "table_name": table_name})
 
     def __eq__(self, other: typing.Any) -> bool:
         if other.__class__ is self.__class__:
             other = typing.cast(Table, other)
-            return (self._schema_name, self._table_name, self._columns) == (
-                other._schema_name,
-                other._table_name,
-                other._columns,
+            return (self.schema_name, self.table_name) == (
+                other.schema_name,
+                other.table_name,
             )
         else:
             return NotImplemented
 
     def __hash__(self) -> int:
-        return hash((self._schema_name, self._table_name, self._columns))
+        return hash((self.schema_name, self.table_name))
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}: {self._schema_name}.{self._table_name}>"
+        return f"<{self.__class__.__name__}: {self.schema_name}.{self.table_name}>"

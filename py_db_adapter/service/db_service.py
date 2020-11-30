@@ -1,49 +1,36 @@
 from __future__ import annotations
 
-import abc
+import functools
 import logging
 import pathlib
 import typing
 
+import pydantic
+
 from py_db_adapter import domain, adapter
 
-__all__ = ("DbService",)
+__all__ = ("DbService", "postgres_pyodbc_service", "read_only_hive_service")
 
 logger = logging.getLogger(__name__)
 
 
-class DbService(abc.ABC):
-    @property
-    @abc.abstractmethod
-    def cache_dir(self) -> typing.Optional[pathlib.Path]:
-        raise NotImplementedError
+class DbService(pydantic.BaseModel):
+    db: adapter.DbAdapter
+    cache_dir: typing.Optional[pathlib.Path] = None
+    read_only: bool = False
 
-    @property
-    @abc.abstractmethod
-    def con(self) -> adapter.DbConnection:
-        raise NotImplementedError
+    class Config:
+        allow_mutation = False
+        anystr_strip_whitespace = True
+        min_anystr_length = 1
+        # underscore_attrs_are_private = True
 
-    def create_repo(
-        self,
-        *,
-        schema_name: typing.Optional[str],
-        table_name: str,
-        change_tracking_columns: typing.Set[str],
-        pk_columns: typing.Optional[typing.Set[str]] = None,
-        batch_size: int = 1_000,
-    ) -> adapter.Repository:
-        table = self.con.inspect_table(
-            table_name=table_name,
-            schema_name=schema_name,
-            custom_pk_cols=pk_columns,
-            cache_dir=self.cache_dir,
-        )
-        return adapter.Repository(
-            db=self.db,
-            table=table,
-            change_tracking_columns=change_tracking_columns,
-            batch_size=batch_size,
-        )
+    # @pydantic.validator("db_name", "db_uri")
+    # def db_name_is_required(cls, v: str):
+    #     if v:
+    #         return v
+    #     else:
+    #         raise ValueError(f"Value cannot be blank.")
 
     def copy_table_if_not_exists(
         self,
@@ -53,78 +40,72 @@ class DbService(abc.ABC):
         src_table_name: str,
         dest_schema_name: typing.Optional[str],
         dest_table_name: str,
-        pk_columns: typing.Optional[typing.Set[str]] = None,
-    ) -> None:
+    ) -> bool:
+        if self.read_only:
+            raise domain.exceptions.DatabaseIsReadOnly()
+
         if not self.db.sql_adapter.table_exists(
-            schema_name=dest_schema_name, table_name=dest_table_name
+            schema_name=dest_table.schema_name, table_name=dest_table.table_name
         ):
-            logger.debug(f"{dest_schema_name}.{dest_table_name} does not exist, so it will be created.")
-            src_table = src_db.con.inspect_table(
+            logger.debug(
+                f"{dest_schema_name}.{dest_table_name} does not exist, so it will be created."
+            )
+            src_table = src_db._inspect_table(
                 table_name=src_table_name,
                 schema_name=src_schema_name,
                 custom_pk_cols=pk_columns,
-                cache_dir=self.cache_dir,
             )
             dest_table = src_table.copy(
-                new_schema_name=dest_schema_name,
-                new_table_name=dest_table_name,
+                schema_name=dest_schema_name,
+                table_name=dest_table_name,
             )
             sql = self.db.sql_adapter.definition(dest_table)
             self.db.connection.execute(sql)
             logger.debug(f"{dest_schema_name}.{dest_table_name} was created.")
+            return True
         else:
             logger.debug(f"{dest_schema_name}.{dest_table_name} already exists.")
+            return False
 
-    @property
-    @abc.abstractmethod
-    def db(self) -> adapter.DbAdapter:
-        raise NotImplementedError
-
-    @abc.abstractmethod
     def fast_row_count(
         self, *, schema_name: typing.Optional[str], table_name: str
     ) -> typing.Optional[int]:
-        raise NotImplementedError
+        return self.db.fast_row_count(schema_name=schema_name, table_name=table_name)
 
-    @abc.abstractmethod
-    def inspect_table(
-        self, *, schema_name: typing.Optional[str], table_name: str
-    ) -> domain.Table:
-        raise NotImplementedError
+    def row_count(self, *, schema_name: typing.Optional[str], table_name: str) -> int:
+        repo = self._create_repo()
 
-    @abc.abstractmethod
     def table_exists(
         self, *, schema_name: typing.Optional[str], table_name: str
     ) -> bool:
-        raise NotImplementedError
+        return self.db.table_exists(schema_name=schema_name, table_name=table_name)
 
     def upsert_table(
         self,
         *,
         src_db: DbService,
-        src_schema_name: typing.Optional[str],
-        src_table_name: str,
-        dest_schema_name: typing.Optional[str],
-        dest_table_name: str,
-        pk_cols: typing.Optional[typing.Set[str]] = None,
-        compare_cols: typing.Optional[typing.Set[str]] = None,
+        src_table: domain.Table,
+        dest_table: domain.Table,
         add: bool = True,
         update: bool = True,
         delete: bool = True,
         batch_size: int = 1_000,
     ) -> None:
+        if self.read_only:
+            raise domain.exceptions.DatabaseIsReadOnly()
+
         self.copy_table_if_not_exists(
             src_db=src_db,
             src_schema_name=src_schema_name,
             src_table_name=src_table_name,
             dest_schema_name=dest_schema_name,
             dest_table_name=dest_table_name,
-            pk_columns=pk_cols
+            pk_columns=pk_cols,
         )
 
         # sourcery skip: hoist-if-from-if
         if pk_cols is None or compare_cols is None:
-            src_table = src_db.inspect_table(
+            src_table = src_db._inspect_table(
                 schema_name=src_schema_name, table_name=src_table_name
             )
             if pk_cols is None:
@@ -136,14 +117,14 @@ class DbService(abc.ABC):
                     if col not in src_table.primary_key_column_names
                 }
 
-        src_repo = src_db.create_repo(
+        src_repo = src_db._create_repo(
             schema_name=src_schema_name,
             table_name=src_table_name,
             change_tracking_columns=compare_cols,
             pk_columns=pk_cols,
             batch_size=batch_size,
         )
-        dest_repo = self.create_repo(
+        dest_repo = self._create_repo(
             schema_name=dest_schema_name,
             table_name=dest_table_name,
             change_tracking_columns=compare_cols,
@@ -182,3 +163,58 @@ class DbService(abc.ABC):
                 )
                 dest_repo.update(updated_rows)
         self.db.connection.commit()
+
+    def _create_repo(
+        self,
+        *,
+        table: domain.Table,
+        batch_size: int = 1_000,
+    ) -> adapter.Repository:
+        table = self._inspect_table(
+            table_name=table_name,
+            schema_name=schema_name,
+            custom_pk_cols=pk_columns,
+        )
+        return adapter.Repository(
+            db=self.db,
+            table=table,
+            change_tracking_columns=change_tracking_columns,
+            batch_size=batch_size,
+        )
+
+    @functools.lru_cache
+    def _inspect_table(
+        self,
+        *,
+        schema_name: typing.Optional[str],
+        table_name: str,
+        custom_pk_cols: typing.Set[str],
+    ) -> domain.Table:
+        return self.db.connection.inspect_table(
+            schema_name=schema_name,
+            table_name=table_name,
+            custom_pk_cols=custom_pk_cols,
+            cache_dir=self.cache_dir,
+        )
+
+
+def postgres_pyodbc_service(
+    *,
+    db_name: str,
+    db_uri: str,
+    cache_dir: typing.Optional[pathlib.Path] = None,
+    read_only: bool = False,
+) -> DbService:
+    sql_adapter = adapter.PostgreSQLAdapter()
+    con = adapter.PyodbcConnection(db_name=db_name, fast_executemany=False, uri=db_uri)
+    db = adapter.PostgresPyodbcDbAdapter(con=con, postgres_sql_adapter=sql_adapter)
+    return DbService(db=db, cache_dir=cache_dir, read_only=read_only)
+
+
+def read_only_hive_service(
+    *, db_name: str, db_uri: str, cache_dir: typing.Optional[pathlib.Path] = None
+) -> DbService:
+    sql_adapter = adapter.HiveSQLAdapter()
+    con = adapter.HivePyodbcConnection(db_name=db_name, uri=db_uri)
+    db = adapter.HivePyodbcDbAdapter(con=con, hive_sql_adapter=sql_adapter)
+    return DbService(db=db, cache_dir=cache_dir, read_only=True)

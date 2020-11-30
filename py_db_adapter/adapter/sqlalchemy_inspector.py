@@ -43,17 +43,19 @@ def sqlalchemy_inspect_table(
     table_name: str,
     schema_name: typing.Optional[str] = None,
     inspector: typing.Optional[reflection.Inspector] = None,
+    custom_pk_cols: typing.Optional[typing.Set[str]] = None,
+    compare_cols: typing.Optional[typing.Set[str]] = None,
 ) -> domain.Table:
     if inspector is None:
         inspector = sa.inspect(engine)
 
     domain_columns: typing.List[domain.Column] = []
-    pks = inspector.get_pk_constraint(table_name=table_name, schema=schema_name)[
+    pks = set(inspector.get_pk_constraint(table_name=table_name, schema=schema_name)[
         "constrained_columns"
-    ]
+    ])
     for column in inspector.get_columns(table_name, schema=schema_name):
         dtype = column["type"]
-        pk_flag = column["name"] in pks
+        # pk_flag = column["name"] in pks
         column_name = column["name"]
         nullable = column["nullable"]
         autoincrement = column["autoincrement"] is not None
@@ -64,7 +66,6 @@ def sqlalchemy_inspect_table(
                 table_name=table_name,
                 column_name=column_name,
                 nullable=nullable,
-                primary_key=pk_flag,
             )
         elif dtype.python_type is datetime.date:
             domain_col = domain.DateColumn(
@@ -72,7 +73,6 @@ def sqlalchemy_inspect_table(
                 table_name=table_name,
                 column_name=column_name,
                 nullable=nullable,
-                primary_key=pk_flag,
             )
         elif dtype.python_type is datetime.datetime:
             domain_col = domain.DateTimeColumn(
@@ -80,7 +80,6 @@ def sqlalchemy_inspect_table(
                 table_name=table_name,
                 column_name=column_name,
                 nullable=nullable,
-                primary_key=pk_flag,
             )
         elif hasattr(dtype, "scale") and dtype.scale is not None:
             domain_col = domain.DecimalColumn(
@@ -88,7 +87,6 @@ def sqlalchemy_inspect_table(
                 table_name=table_name,
                 column_name=column_name,
                 nullable=nullable,
-                primary_key=pk_flag,
                 precision=dtype.precision,
                 scale=dtype.scale,
             )
@@ -98,7 +96,6 @@ def sqlalchemy_inspect_table(
                 table_name=table_name,
                 column_name=column_name,
                 nullable=nullable,
-                primary_key=pk_flag,
             )
         elif dtype.python_type is int:
             domain_col = domain.IntegerColumn(
@@ -107,7 +104,6 @@ def sqlalchemy_inspect_table(
                 table_name=table_name,
                 column_name=column_name,
                 nullable=nullable,
-                primary_key=pk_flag,
             )
         elif dtype.python_type is str or dtype.python_type is list:
             length = dtype.length if hasattr(dtype, "length") else None
@@ -116,7 +112,6 @@ def sqlalchemy_inspect_table(
                 table_name=table_name,
                 column_name=column_name,
                 nullable=nullable,
-                primary_key=pk_flag,
                 max_length=length,
             )
         # elif dtype.python_type is list:
@@ -132,10 +127,14 @@ def sqlalchemy_inspect_table(
 
         domain_columns.append(domain_col)
 
+    pk_cols = custom_pk_cols if custom_pk_cols else pks
+
     return domain.Table(
         schema_name=schema_name,
         table_name=table_name,
-        columns=domain_columns,
+        columns=set(domain_columns),
+        pk_cols=pk_cols,
+        compare_cols=compare_cols,
     )
 
 

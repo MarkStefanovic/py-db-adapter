@@ -48,7 +48,8 @@ def pyodbc_inspect_table(
     con: pyodbc.Connection,
     table_name: str,
     schema_name: typing.Optional[str] = None,
-    custom_pk_cols: typing.Optional[typing.Iterable[str]] = None,
+    custom_pk_cols: typing.Optional[typing.Set[str]] = None,
+    compare_cols: typing.Optional[typing.Set[str]] = None,
 ) -> domain.Table:
     if not pyodbc_table_exists(con=con, table_name=table_name, schema_name=schema_name):
         raise exceptions.TableDoesNotExist(
@@ -57,20 +58,22 @@ def pyodbc_inspect_table(
 
     domain_cols = []
     pyodbc_cols = _inspect_cols(con=con, table_name=table_name, schema_name=schema_name)
-    if custom_pk_cols:
-        pk_col_names = custom_pk_cols
-    else:
-        pk_cols = _inspect_pks(con=con, table_name=table_name, schema_name=schema_name)
-        pk_col_names = {col.column_name for col in pk_cols}
+    pk_cols = _inspect_pks(con=con, table_name=table_name, schema_name=schema_name)
+
+    if not pk_cols and not custom_pk_cols:
+        raise exceptions.MissingPrimaryKey(
+            schema_name=schema_name, table_name=table_name
+        )
+
+    pk_col_names = {col.column_name for col in pk_cols}
+
     for col in pyodbc_cols:
-        pk_col = col.column_name in pk_col_names
         if col.domain_data_type == domain.DataType.Bool:
             domain_col: domain.Column = domain.BooleanColumn(
                 schema_name=schema_name,
                 table_name=table_name,
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
-                primary_key=pk_col,
             )
         elif col.domain_data_type == domain.DataType.Date:
             domain_col = domain.DateColumn(
@@ -78,7 +81,6 @@ def pyodbc_inspect_table(
                 table_name=table_name,
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
-                primary_key=pk_col,
             )
         elif col.domain_data_type == domain.DataType.DateTime:
             domain_col = domain.DateTimeColumn(
@@ -86,7 +88,6 @@ def pyodbc_inspect_table(
                 table_name=table_name,
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
-                primary_key=pk_col,
             )
         elif col.domain_data_type == domain.DataType.Decimal:
             domain_col = domain.DecimalColumn(
@@ -94,7 +95,6 @@ def pyodbc_inspect_table(
                 table_name=table_name,
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
-                primary_key=pk_col,
                 precision=col.precision or 18,
                 scale=col.scale or 2,
             )
@@ -104,7 +104,6 @@ def pyodbc_inspect_table(
                 table_name=table_name,
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
-                primary_key=pk_col,
             )
         elif col.domain_data_type == domain.DataType.Int:
             domain_col = domain.IntegerColumn(
@@ -113,7 +112,6 @@ def pyodbc_inspect_table(
                 table_name=table_name,
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
-                primary_key=pk_col,
             )
         elif col.domain_data_type == domain.DataType.Text:
             domain_col = domain.TextColumn(
@@ -121,7 +119,6 @@ def pyodbc_inspect_table(
                 table_name=table_name,
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
-                primary_key=pk_col,
                 max_length=col.length,
             )
         else:
@@ -134,18 +131,15 @@ def pyodbc_inspect_table(
         missing_pk_col_names = {col for col in pk_col_names if col not in col_names}
         if missing_pk_col_names:
             raise exceptions.InvalidCustomPrimaryKey(sorted(missing_pk_col_names))
+        pk_col_names = custom_pk_cols
 
-    if custom_pk_cols or any(col for col in domain_cols if col.primary_key):
-        return domain.Table(
-            schema_name=schema_name,
-            table_name=table_name,
-            columns=domain_cols,
-            custom_pk_cols=custom_pk_cols,
-        )
-    else:
-        raise exceptions.MissingPrimaryKey(
-            schema_name=schema_name, table_name=table_name
-        )
+    return domain.Table(
+        schema_name=schema_name,
+        table_name=table_name,
+        columns=set(domain_cols),
+        pk_cols=pk_col_names,
+        compare_cols=compare_cols,
+    )
 
 
 class PyodbcColumn(pydantic.BaseModel):
