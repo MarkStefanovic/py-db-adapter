@@ -45,6 +45,36 @@ class DbService(abc.ABC):
             batch_size=batch_size,
         )
 
+    def copy_table_if_not_exists(
+        self,
+        *,
+        src_db: DbService,
+        src_schema_name: typing.Optional[str],
+        src_table_name: str,
+        dest_schema_name: typing.Optional[str],
+        dest_table_name: str,
+        pk_columns: typing.Optional[typing.Set[str]] = None,
+    ) -> None:
+        if not self.db.sql_adapter.table_exists(
+            schema_name=dest_schema_name, table_name=dest_table_name
+        ):
+            logger.debug(f"{dest_schema_name}.{dest_table_name} does not exist, so it will be created.")
+            src_table = src_db.con.inspect_table(
+                table_name=src_table_name,
+                schema_name=src_schema_name,
+                custom_pk_cols=pk_columns,
+                cache_dir=self.cache_dir,
+            )
+            dest_table = src_table.copy(
+                new_schema_name=dest_schema_name,
+                new_table_name=dest_table_name,
+            )
+            sql = self.db.sql_adapter.definition(dest_table)
+            self.db.connection.execute(sql)
+            logger.debug(f"{dest_schema_name}.{dest_table_name} was created.")
+        else:
+            logger.debug(f"{dest_schema_name}.{dest_table_name} already exists.")
+
     @property
     @abc.abstractmethod
     def db(self) -> adapter.DbAdapter:
@@ -83,6 +113,15 @@ class DbService(abc.ABC):
         delete: bool = True,
         batch_size: int = 1_000,
     ) -> None:
+        self.copy_table_if_not_exists(
+            src_db=src_db,
+            src_schema_name=src_schema_name,
+            src_table_name=src_table_name,
+            dest_schema_name=dest_schema_name,
+            dest_table_name=dest_table_name,
+            pk_columns=pk_cols
+        )
+
         # sourcery skip: hoist-if-from-if
         if pk_cols is None or compare_cols is None:
             src_table = src_db.inspect_table(
