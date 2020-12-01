@@ -96,7 +96,7 @@ class PyodbcConnection(db_connection.DbConnection):
     @property
     def handle(self) -> pyodbc.Connection:
         if self._con is None:
-            self._con = pyodbc.connect(self._uri)
+            self._con = pyodbc.connect(self._uri, autocommit=self._autocommit)
         return self._con
 
     def inspect_table(
