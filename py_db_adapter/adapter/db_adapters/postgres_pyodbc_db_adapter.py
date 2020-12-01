@@ -39,23 +39,24 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
             WHERE  schemaname = ?
             AND    relname = ?
         """
-        result = self.connection.fetch(
-            sql, [{"schema_name": schema_name, "table_name": table_name}]
-        )
-        assert result is not None
-        if result.is_empty:
-            raise domain.exceptions.TableDoesNotExist(table_name=table_name, schema_name=schema_name)
+        with self.connection as con:
+            result = con.fetch(
+                sql, [{"schema_name": schema_name, "table_name": table_name}]
+            )
+            assert result is not None
+            if result.is_empty:
+                raise domain.exceptions.TableDoesNotExist(table_name=table_name, schema_name=schema_name)
 
-        row_ct = result.first_value()
+            row_ct = result.first_value()
 
-        if row_ct != 0:
-            return typing.cast(int, row_ct)
+            if row_ct != 0:
+                return typing.cast(int, row_ct)
 
-        result = self.connection.fetch(
-            f'SELECT COUNT(*) AS row_ct FROM "{schema_name}"."{table_name}"'
-        )
-        assert result is not None
-        return typing.cast(int, result.first_value())
+            result = con.fetch(
+                f'SELECT COUNT(*) AS row_ct FROM "{schema_name}"."{table_name}"'
+            )
+            assert result is not None
+            return typing.cast(int, result.first_value())
 
     @property
     def sql_adapter(self) -> sql_adapters.PostgreSQLAdapter:

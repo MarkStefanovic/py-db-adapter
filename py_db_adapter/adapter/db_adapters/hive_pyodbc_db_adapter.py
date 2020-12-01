@@ -36,7 +36,8 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
             schema_name=schema_name, table_name=table_name
         )
         sql = f"DESCRIBE EXTENDED {full_table_name}"
-        result = self.connection.fetch(sql)
+        with self.connection as con:
+            result = con.fetch(sql)
 
         # sourcery skip: remove-unnecessary-else
         if result and not result.is_empty:
