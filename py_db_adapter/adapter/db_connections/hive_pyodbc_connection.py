@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 class HivePyodbcConnection(pyodbc_connection.PyodbcConnection):
     def __init__(self, *, db_name: str, uri: str):
-        super().__init__(db_name=db_name, uri=uri, fast_executemany=False)
+        super().__init__(
+            db_name=db_name, uri=uri, fast_executemany=False, autocommit=True
+        )
 
         self._db_name = db_name
         self._uri = uri

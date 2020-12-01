@@ -175,7 +175,9 @@ def postgres_pyodbc_datasource(
     read_only: bool = False,
 ) -> Datasource:
     sql_adapter = adapter.PostgreSQLAdapter()
-    con = adapter.PyodbcConnection(db_name=db_name, fast_executemany=False, uri=db_uri)
+    con = adapter.PyodbcConnection(
+        db_name=db_name, fast_executemany=False, uri=db_uri, autocommit=False
+    )
     db = adapter.PostgresPyodbcDbAdapter(con=con, postgres_sql_adapter=sql_adapter)
     return Datasource(
         db=db,

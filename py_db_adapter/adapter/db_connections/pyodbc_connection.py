@@ -17,12 +17,13 @@ logger = logging.getLogger(__name__)
 
 
 class PyodbcConnection(db_connection.DbConnection):
-    def __init__(self, *, db_name: str, fast_executemany: bool, uri: str):
+    def __init__(self, *, db_name: str, fast_executemany: bool, uri: str, autocommit: bool):
         super().__init__()
 
         self._db_name = db_name
         self._fast_executemany = fast_executemany
         self._uri = uri
+        self._autocommit = autocommit
 
         self._con: typing.Optional[pyodbc.Connection] = None
         self._cur: typing.Optional[pyodbc.Cursor] = None
@@ -135,7 +136,7 @@ class PyodbcConnection(db_connection.DbConnection):
 
     def __enter__(self) -> PyodbcConnection:
         if self._con is None:  # noqa
-            self._con = pyodbc.connect(self._uri)
+            self._con = pyodbc.connect(self._uri, autocommit=self._autocommit)
             logger.debug(f"Opened connection to {self._db_name}.")
         return self
 
