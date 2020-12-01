@@ -44,7 +44,6 @@ def sqlalchemy_inspect_table(
     schema_name: typing.Optional[str] = None,
     inspector: typing.Optional[reflection.Inspector] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
-    compare_cols: typing.Optional[typing.Set[str]] = None,
 ) -> domain.Table:
     if inspector is None:
         inspector = sa.inspect(engine)
@@ -66,6 +65,7 @@ def sqlalchemy_inspect_table(
                 table_name=table_name,
                 column_name=column_name,
                 nullable=nullable,
+                autoincrement=autoincrement,
             )
         elif dtype.python_type is datetime.date:
             domain_col = domain.DateColumn(
@@ -73,6 +73,7 @@ def sqlalchemy_inspect_table(
                 table_name=table_name,
                 column_name=column_name,
                 nullable=nullable,
+                autoincrement=autoincrement,
             )
         elif dtype.python_type is datetime.datetime:
             domain_col = domain.DateTimeColumn(
@@ -80,6 +81,7 @@ def sqlalchemy_inspect_table(
                 table_name=table_name,
                 column_name=column_name,
                 nullable=nullable,
+                autoincrement=autoincrement,
             )
         elif hasattr(dtype, "scale") and dtype.scale is not None:
             domain_col = domain.DecimalColumn(
@@ -89,6 +91,7 @@ def sqlalchemy_inspect_table(
                 nullable=nullable,
                 precision=dtype.precision,
                 scale=dtype.scale,
+                autoincrement=autoincrement,
             )
         elif dtype.python_type is float:
             domain_col = domain.FloatColumn(
@@ -96,6 +99,7 @@ def sqlalchemy_inspect_table(
                 table_name=table_name,
                 column_name=column_name,
                 nullable=nullable,
+                autoincrement=autoincrement,
             )
         elif dtype.python_type is int:
             domain_col = domain.IntegerColumn(
@@ -113,6 +117,7 @@ def sqlalchemy_inspect_table(
                 column_name=column_name,
                 nullable=nullable,
                 max_length=length,
+                autoincrement=autoincrement,
             )
         # elif dtype.python_type is list:
         #     data_type = domain.Text()
@@ -134,7 +139,6 @@ def sqlalchemy_inspect_table(
         table_name=table_name,
         columns=set(domain_columns),
         pk_cols=pk_cols,
-        compare_cols=compare_cols,
     )
 
 

@@ -5,10 +5,9 @@ import typing
 
 from py_db_adapter import domain
 from py_db_adapter.adapter import db_adapter
+from py_db_adapter.domain import exceptions
 
 __all__ = ("Repository",)
-
-from py_db_adapter.domain import exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +124,9 @@ class Repository:
 
     @property
     def _pk_cols(self) -> typing.Set[domain.Column]:
-        return {col for col in self._table.columns if col.column_name in self._table.pk_cols}
+        return {
+            col for col in self._table.columns if col.column_name in self._table.pk_cols
+        }
 
     def keys(self, /, include_change_tracking_cols: bool = True) -> domain.Rows:
         if include_change_tracking_cols:
@@ -148,15 +149,14 @@ class Repository:
         if result is None:
             return domain.Rows(
                 column_names=sorted(
-                    self._table.pk_cols
-                    | set(self._change_tracking_columns)
+                    self._table.pk_cols | set(self._change_tracking_columns)
                 ),
                 rows=[],
             )
         else:
             return result
 
-    def row_count(self) -> typing.Optional[int]:
+    def row_count(self) -> int:
         """Get the number of rows in a table"""
         result = self._db.connection.fetch(
             self._db.sql_adapter.row_count(
@@ -164,10 +164,12 @@ class Repository:
                 table_name=self._table.table_name,
             ),
         )
-        if result:
-            return result.first_value()
+        if result and result.first_value():
+            return typing.cast(int, result.first_value())
         else:
-            return None
+            raise domain.exceptions.DeveloperError(
+                "The db adapter row_count method did not return a result."
+            )
 
     @property
     def table(self) -> domain.Table:

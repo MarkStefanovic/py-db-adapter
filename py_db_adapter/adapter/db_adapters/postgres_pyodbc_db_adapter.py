@@ -49,13 +49,13 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
         row_ct = result.first_value()
 
         if row_ct != 0:
-            return row_ct
+            return typing.cast(int, row_ct)
 
         result = self.connection.fetch(
             f'SELECT COUNT(*) AS row_ct FROM "{schema_name}"."{table_name}"'
         )
         assert result is not None
-        return result.first_value()
+        return typing.cast(int, result.first_value())
 
     @property
     def sql_adapter(self) -> sql_adapters.PostgreSQLAdapter:

@@ -103,7 +103,7 @@ class PyodbcConnection(db_connection.DbConnection):
         *,
         table_name: str,
         schema_name: typing.Optional[str] = None,
-        custom_pk_cols: typing.Optional[typing.Set[str]] = None,
+        pk_cols: typing.Optional[typing.Set[str]] = None,
         cache_dir: typing.Optional[pathlib.Path] = None,
     ) -> domain.Table:
         if cache_dir is None:
@@ -111,14 +111,14 @@ class PyodbcConnection(db_connection.DbConnection):
                 con=self.handle,
                 table_name=table_name,
                 schema_name=schema_name,
-                custom_pk_cols=custom_pk_cols,
+                custom_pk_cols=pk_cols,
             )
         else:
             return pyodbc_inspector.pyodbc_inspect_table_and_cache(
                 con=self.handle,
                 table_name=table_name,
                 schema_name=schema_name,
-                custom_pk_cols=custom_pk_cols,
+                custom_pk_cols=pk_cols,
                 cache_dir=cache_dir,
             )
 

@@ -74,7 +74,7 @@ class SqlAdapter(abc.ABC):
 
     def definition(self, /, table: domain.Table) -> str:
         pk_col_csv = ", ".join(
-            self.wrap(col) for col in sorted(table.primary_key_column_names)
+            self.wrap(col) for col in sorted(table.pk_cols)
         )
         adapters = sorted(
             (self._map_column_to_adapter(col) for col in table.columns),

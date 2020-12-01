@@ -14,7 +14,6 @@ class Table(pydantic.BaseModel):
     table_name: str
     columns: typing.Set[column.Column]
     pk_cols: typing.Set[str]
-    compare_cols: typing.Optional[typing.Set[str]] = None
 
     class Config:
         allow_mutation = False
@@ -43,7 +42,14 @@ class Table(pydantic.BaseModel):
             return NotImplemented
 
     def __hash__(self) -> int:
-        return hash((self.schema_name, self.table_name))
+        return hash(
+            (
+                self.schema_name,
+                self.table_name,
+                frozenset(self.columns),
+                frozenset(self.pk_cols),
+            )
+        )
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}: {self.schema_name}.{self.table_name}>"

@@ -28,7 +28,7 @@ def pyodbc_inspect_table_and_cache(
     con: pyodbc.Connection,
     table_name: str,
     schema_name: typing.Optional[str] = None,
-    custom_pk_cols: typing.Optional[typing.Iterable[str]] = None,
+    custom_pk_cols: typing.Optional[typing.Set[str]] = None,
 ) -> domain.Table:
     fp = cache_dir / f"{schema_name}.{table_name}.p"
     if fp.exists():
@@ -49,7 +49,6 @@ def pyodbc_inspect_table(
     table_name: str,
     schema_name: typing.Optional[str] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
-    compare_cols: typing.Optional[typing.Set[str]] = None,
 ) -> domain.Table:
     if not pyodbc_table_exists(con=con, table_name=table_name, schema_name=schema_name):
         raise exceptions.TableDoesNotExist(
@@ -74,6 +73,7 @@ def pyodbc_inspect_table(
                 table_name=table_name,
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
+                autoincrement=False,
             )
         elif col.domain_data_type == domain.DataType.Date:
             domain_col = domain.DateColumn(
@@ -81,6 +81,7 @@ def pyodbc_inspect_table(
                 table_name=table_name,
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
+                autoincrement=False,
             )
         elif col.domain_data_type == domain.DataType.DateTime:
             domain_col = domain.DateTimeColumn(
@@ -88,6 +89,7 @@ def pyodbc_inspect_table(
                 table_name=table_name,
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
+                autoincrement=False,
             )
         elif col.domain_data_type == domain.DataType.Decimal:
             domain_col = domain.DecimalColumn(
@@ -97,6 +99,7 @@ def pyodbc_inspect_table(
                 nullable=col.nullable_flag,
                 precision=col.precision or 18,
                 scale=col.scale or 2,
+                autoincrement=False,
             )
         elif col.domain_data_type == domain.DataType.Float:
             domain_col = domain.FloatColumn(
@@ -104,6 +107,7 @@ def pyodbc_inspect_table(
                 table_name=table_name,
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
+                autoincrement=False,
             )
         elif col.domain_data_type == domain.DataType.Int:
             domain_col = domain.IntegerColumn(
@@ -120,6 +124,7 @@ def pyodbc_inspect_table(
                 column_name=col.column_name,
                 nullable=col.nullable_flag,
                 max_length=col.length,
+                autoincrement=False,
             )
         else:
             raise ValueError(f"Unrecognized domain_data_type: {col.domain_data_type!r}")
@@ -138,7 +143,6 @@ def pyodbc_inspect_table(
         table_name=table_name,
         columns=set(domain_cols),
         pk_cols=pk_col_names,
-        compare_cols=compare_cols,
     )
 
 

@@ -5,6 +5,7 @@ import datetime
 import decimal
 import typing
 
+import pydantic
 import sqlalchemy as sa
 
 from py_db_adapter import domain
@@ -22,38 +23,17 @@ __all__ = (
 )
 
 
-class Column(abc.ABC):
-    def __init__(
-        self,
-        *,
-        schema_name: typing.Optional[str],
-        table_name: str,
-        column_name: str,
-        nullable: bool,
-        autoincrement: bool,
-    ):
-        self._schema_name = schema_name
-        self._table_name = table_name
-        self._column_name = column_name
-        self._nullable = nullable
-        self._autoincrement = autoincrement
+class Column(pydantic.BaseModel, abc.ABC):
+    schema_name: typing.Optional[str]
+    table_name: str
+    column_name: str
+    nullable: bool
+    autoincrement: bool
 
-    @property
-    def autoincrement(self) -> bool:
-        return self._autoincrement
-
-    @property
-    def column_name(self) -> str:
-        return self._column_name
-
-    def copy(self, new_schema_name: str, new_table_name: str) -> Column:
-        return self.__class__(
-            schema_name=new_schema_name,
-            table_name=new_table_name,
-            column_name=self._column_name,
-            nullable=self._nullable,
-            autoincrement=self._autoincrement,
-        )
+    class Config:
+        allow_mutation = False
+        anystr_strip_whitespace = True
+        min_anystr_length = 1
 
     @property
     @abc.abstractmethod
@@ -61,50 +41,38 @@ class Column(abc.ABC):
         raise NotImplementedError
 
     @property
-    def nullable(self) -> bool:
-        return self._nullable
-
-    @property
     @abc.abstractmethod
     def python_data_type(self) -> type:
         raise NotImplementedError
-
-    @property
-    def schema_name(self) -> typing.Optional[str]:
-        return self._schema_name
 
     @property
     @abc.abstractmethod
     def sqlalchemy_data_type(self) -> sa.types.TypeEngine:
         raise NotImplementedError
 
-    @property
-    def table_name(self) -> str:
-        return self._table_name
-
     def to_sqlalchemy_column(self) -> sa.Column:
         return sa.Column(
-            self._column_name,
+            self.column_name,
             self.sqlalchemy_data_type,
-            nullable=self._nullable,
+            nullable=self.nullable,
         )
 
     def __eq__(self, other: typing.Any) -> bool:
         if other.__class__ is self.__class__:
             other = typing.cast(Column, other)
             return (
-                self._schema_name,
-                self._table_name,
-                self._column_name,
-                self._nullable,
-                self._autoincrement,
+                self.schema_name,
+                self.table_name,
+                self.column_name,
+                self.nullable,
+                self.autoincrement,
                 self.data_type,
             ) == (
-                other._schema_name,
-                other._table_name,
-                other._column_name,
-                other._nullable,
-                other._autoincrement,
+                other.schema_name,
+                other.table_name,
+                other.column_name,
+                other.nullable,
+                other.autoincrement,
                 other.data_type,
             )
 
@@ -114,40 +82,17 @@ class Column(abc.ABC):
     def __hash__(self) -> int:
         return hash(
             (
-                self._schema_name,
-                self._table_name,
-                self._column_name,
-                self._nullable,
-                self._autoincrement,
+                self.schema_name,
+                self.table_name,
+                self.column_name,
+                self.nullable,
+                self.autoincrement,
                 self.data_type,
             )
         )
 
-    def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}(schema_name={self._schema_name}, "
-            f"table_name={self._table_name}, column_name={self._column_name}, "
-            f"nullable={self._nullable}, autoincrement={self._autoincrement})"
-        )
-
 
 class BooleanColumn(Column):
-    def __init__(
-        self,
-        *,
-        schema_name: typing.Optional[str],
-        table_name: str,
-        column_name: str,
-        nullable: bool,
-    ):
-        super().__init__(
-            schema_name=schema_name,
-            table_name=table_name,
-            column_name=column_name,
-            nullable=nullable,
-            autoincrement=False,
-        )
-
     @property
     def python_data_type(self) -> typing.Type[bool]:
         return bool
@@ -162,22 +107,6 @@ class BooleanColumn(Column):
 
 
 class DateColumn(Column):
-    def __init__(
-        self,
-        *,
-        schema_name: typing.Optional[str],
-        table_name: str,
-        column_name: str,
-        nullable: bool,
-    ):
-        super().__init__(
-            schema_name=schema_name,
-            table_name=table_name,
-            column_name=column_name,
-            nullable=nullable,
-            autoincrement=False,
-        )
-
     @property
     def python_data_type(self) -> typing.Type[datetime.date]:
         return datetime.date
@@ -192,22 +121,6 @@ class DateColumn(Column):
 
 
 class DateTimeColumn(Column):
-    def __init__(
-        self,
-        *,
-        schema_name: typing.Optional[str],
-        table_name: str,
-        column_name: str,
-        nullable: bool,
-    ):
-        super().__init__(
-            schema_name=schema_name,
-            table_name=table_name,
-            column_name=column_name,
-            nullable=nullable,
-            autoincrement=False,
-        )
-
     @property
     def python_data_type(self) -> typing.Type[datetime.datetime]:
         return datetime.datetime
@@ -222,38 +135,12 @@ class DateTimeColumn(Column):
 
 
 class DecimalColumn(Column):
-    def __init__(
-        self,
-        *,
-        schema_name: typing.Optional[str],
-        table_name: str,
-        column_name: str,
-        nullable: bool,
-        precision: int,
-        scale: int,
-    ):
-        self._precision = precision
-        self._scale = scale
-
-        super().__init__(
-            schema_name=schema_name,
-            table_name=table_name,
-            column_name=column_name,
-            nullable=nullable,
-            autoincrement=False,
-        )
+    precision: int
+    scale: int
 
     @property
     def data_type(self) -> typing.Literal[domain.DataType.Decimal]:
         return domain.DataType.Decimal
-
-    @property
-    def precision(self) -> int:
-        return self._precision
-
-    @property
-    def scale(self) -> int:
-        return self._scale
 
     @property
     def python_data_type(self) -> typing.Type[decimal.Decimal]:
@@ -265,22 +152,6 @@ class DecimalColumn(Column):
 
 
 class FloatColumn(Column):
-    def __init__(
-        self,
-        *,
-        schema_name: typing.Optional[str],
-        table_name: str,
-        column_name: str,
-        nullable: bool,
-    ):
-        super().__init__(
-            schema_name=schema_name,
-            table_name=table_name,
-            column_name=column_name,
-            nullable=nullable,
-            autoincrement=False,
-        )
-
     @property
     def data_type(self) -> typing.Literal[domain.DataType.Float]:
         return domain.DataType.Float
@@ -295,23 +166,6 @@ class FloatColumn(Column):
 
 
 class IntegerColumn(Column):
-    def __init__(
-        self,
-        *,
-        autoincrement: bool,
-        schema_name: typing.Optional[str],
-        table_name: str,
-        column_name: str,
-        nullable: bool,
-    ):
-        super().__init__(
-            schema_name=schema_name,
-            table_name=table_name,
-            column_name=column_name,
-            nullable=nullable,
-            autoincrement=autoincrement,
-        )
-
     @property
     def data_type(self) -> typing.Literal[domain.DataType.Int]:
         return domain.DataType.Int
@@ -326,32 +180,11 @@ class IntegerColumn(Column):
 
 
 class TextColumn(Column):
-    def __init__(
-        self,
-        *,
-        schema_name: typing.Optional[str],
-        table_name: str,
-        column_name: str,
-        nullable: bool,
-        max_length: typing.Optional[int],
-    ):
-        self._max_length = max_length
-
-        super().__init__(
-            schema_name=schema_name,
-            table_name=table_name,
-            column_name=column_name,
-            nullable=nullable,
-            autoincrement=False,
-        )
+    max_length: typing.Optional[int]
 
     @property
     def data_type(self) -> typing.Literal[domain.DataType.Text]:
         return domain.DataType.Text
-
-    @property
-    def max_length(self) -> typing.Optional[int]:
-        return self._max_length
 
     @property
     def python_data_type(self) -> typing.Type[str]:

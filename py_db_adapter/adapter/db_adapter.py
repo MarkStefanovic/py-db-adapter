@@ -1,12 +1,9 @@
 import abc
-
-__all__ = ("DbAdapter",)
-
-import pathlib
-
 import typing
 
 from py_db_adapter.adapter import db_connection, sql_adapter
+
+__all__ = ("DbAdapter",)
 
 
 class DbAdapter(abc.ABC):
