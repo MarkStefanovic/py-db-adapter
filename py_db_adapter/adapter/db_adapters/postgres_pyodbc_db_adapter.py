@@ -19,10 +19,10 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
         postgres_sql_adapter: sql_adapters.PostgreSQLAdapter = sql_adapters.PostgreSQLAdapter(),
     ):
         self._con = con
-        self._sql_adapter = postgres_sql_adapter
+        self._postgres_sql_adapter = postgres_sql_adapter
 
     @property
-    def connection(self) -> db_connection.DbConnection:
+    def _connection(self) -> db_connection.DbConnection:
         return self._con
 
     def fast_row_count(
@@ -39,9 +39,9 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
             WHERE  schemaname = ?
             AND    relname = ?
         """
-        with self.connection as con:
+        with self._connection as con:
             result = con.fetch(
-                sql, [{"schema_name": schema_name, "table_name": table_name}]
+                sql=sql, params=[{"schema_name": schema_name, "table_name": table_name}]
             )
             assert result is not None
             if result.is_empty:
@@ -50,14 +50,14 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
             row_ct = result.first_value()
             if not row_ct:
                 row_ct = con.fetch(
-                    f'SELECT COUNT(*) AS row_ct FROM "{schema_name}"."{table_name}"'
+                    sql=f'SELECT COUNT(*) AS row_ct FROM "{schema_name}"."{table_name}"'
                 ).first_value()
 
         return typing.cast(int, row_ct)
 
     @property
-    def sql_adapter(self) -> sql_adapters.PostgreSQLAdapter:
-        return self._sql_adapter
+    def _sql_adapter(self) -> sql_adapters.PostgreSQLAdapter:
+        return self._postgres_sql_adapter
 
     def table_exists(
         self, *, table_name: str, schema_name: typing.Optional[str] = None
@@ -73,8 +73,8 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
            WHERE  table_schema = ?
            AND    table_name   = ?
         """
-        result = self.connection.fetch(
-            sql, [{"schema_name": schema_name, "table_name": table_name}]
+        result = self._connection.fetch(
+            sql=sql, params=[{"schema_name": schema_name, "table_name": table_name}]
         )
         if result:
             row_ct = result.first_value()

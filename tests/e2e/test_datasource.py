@@ -94,7 +94,8 @@ def test_inspect_table(cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str) -> 
         max_batch_size=1000,
         read_only=True
     )
-    assert ds.column_names == {
+    with ds:
+        assert ds.column_names == {
         "customer_first_name",
         "customer_id",
         "customer_last_name",
@@ -103,7 +104,7 @@ def test_inspect_table(cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str) -> 
     }
 
 
-def test_upsert_with_explicit_cols(
+def test_sync_with_explicit_cols(
     cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str
 ) -> None:
     src = pda.postgres_pyodbc_datasource(
@@ -121,17 +122,18 @@ def test_upsert_with_explicit_cols(
         "table_name": "customer2",
         "read_only": False,
     })
-    dest.sync(
-        src=src,
-        add=True,
-        update=True,
-        delete=True,
-        recreate=False,
-    )
-    check_customer2_table_in_sync(postgres_pyodbc_db_uri)
+    with src, dest:
+        dest.sync(
+            src=src,
+            add=True,
+            update=True,
+            delete=True,
+            recreate=False,
+        )
+        check_customer2_table_in_sync(postgres_pyodbc_db_uri)
 
 
-def test_upsert_with_default_cols(cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str) -> None:
+def test_sync_with_default_cols(cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str) -> None:
     with pyodbc.connect(postgres_pyodbc_db_uri) as con:
         with con.cursor() as cur:
             row_ct_sql = "SELECT COUNT(*) AS row_ct FROM sales.customer2"
@@ -153,11 +155,12 @@ def test_upsert_with_default_cols(cache_dir: pathlib.Path, postgres_pyodbc_db_ur
         "table_name": "customer2",
         "read_only": False,
     })
-    dest.sync(
-        src=src,
-        add=True,
-        update=True,
-        delete=True,
-        recreate=False,
-    )
-    check_customer2_table_in_sync(postgres_pyodbc_db_uri)
+    with src, dest:
+        dest.sync(
+            src=src,
+            add=True,
+            update=True,
+            delete=True,
+            recreate=False,
+        )
+        check_customer2_table_in_sync(postgres_pyodbc_db_uri)

@@ -12,12 +12,17 @@ __all__ = ("DbConnection",)
 
 class DbConnection(abc.ABC):
     @abc.abstractmethod
+    def close(self) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def commit(self) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
     def execute(
         self,
+        *,
         sql: str,
         params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
     ) -> None:
@@ -26,6 +31,7 @@ class DbConnection(abc.ABC):
     @abc.abstractmethod
     def fetch(
         self,
+        *,
         sql: str,
         params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
     ) -> domain.Rows:
@@ -42,6 +48,10 @@ class DbConnection(abc.ABC):
     ) -> domain.Table:
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def open(self) -> None:
+        raise NotImplementedError
+
     def parameter_placeholder(self, /, column_name: str) -> str:
         return "?"
 
@@ -49,15 +59,15 @@ class DbConnection(abc.ABC):
     def rollback(self) -> None:
         raise NotImplementedError
 
-    @abc.abstractmethod
     def __enter__(self) -> DbConnection:
-        raise NotImplementedError
+        self.open()
+        return self
 
-    @abc.abstractmethod
     def __exit__(
         self,
         exc_type: typing.Optional[typing.Type[BaseException]],
         exc_inst: typing.Optional[BaseException],
         exc_tb: typing.Optional[types.TracebackType],
-    ) -> bool:
-        raise NotImplementedError
+    ) -> typing.Literal[False]:
+        self.close()
+        return False
