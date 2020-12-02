@@ -281,7 +281,7 @@ class SqlAdapter(abc.ABC):
         parameter_placeholder: typing.Callable[[str], str],
     ) -> str:
         non_pk_cols = {col for col in column_names if col not in pk_cols}
-        non_pk_col_wrapped_names = sorted(self.wrap(col) for col in non_pk_cols)
+        non_pk_col_wrapped_names = [self.wrap(col) for col in sorted(non_pk_cols)]
         set_clause = ", ".join(
             f"{col_name} = {parameter_placeholder(col_name)}"
             for col_name in non_pk_col_wrapped_names

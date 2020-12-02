@@ -32,7 +32,7 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
         self, *, table_name: str, schema_name: typing.Optional[str] = None
     ) -> int:
         """A faster row-count method than .row_count(), but is only an estimate"""
-        full_table_name = self._hive_sql_adapter.full_table_name(
+        full_table_name = self._sql_adapter.full_table_name(
             schema_name=schema_name, table_name=table_name
         )
         sql = f"DESCRIBE EXTENDED {full_table_name}"
@@ -57,7 +57,7 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
 
     @property
     def _sql_adapter(self) -> sql_adapter.SqlAdapter:
-        return self._sql_adapter
+        return self._hive_sql_adapter
 
     def table_exists(
         self, *, table_name: str, schema_name: typing.Optional[str] = None
