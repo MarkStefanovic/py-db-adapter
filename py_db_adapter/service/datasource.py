@@ -120,7 +120,7 @@ class Datasource(pydantic.BaseModel):
         src_repo = src._create_repo(src._table)
         dest_repo = self._create_repo(dest_table)
 
-        dest_rows = dest_repo.keys(True)
+        dest_rows = dest_repo.keys(include_change_tracking_cols=True)
         if dest_rows.is_empty:
             logger.info(
                 f"{self.table_name} is empty so the source rows will be fully loaded."
@@ -129,7 +129,6 @@ class Datasource(pydantic.BaseModel):
             dest_repo.add(src_rows)
         else:
             src_rows = src_repo.keys(include_change_tracking_cols=True)
-            dest_rows = dest_repo.keys(include_change_tracking_cols=True)
             changes = dest_rows.compare(
                 rows=src_rows,
                 key_cols=pk_cols,
