@@ -34,6 +34,9 @@ class Datasource(pydantic.BaseModel):
     def column_names(self) -> typing.Set[str]:
         return {col.column_name for col in self._table.columns}
 
+    def commit(self) -> None:
+        self.db.commit()
+
     def copy_table(
         self, *, table: domain.Table, recreate: bool = False
     ) -> typing.Tuple[domain.Table, bool]:
@@ -148,7 +151,6 @@ class Datasource(pydantic.BaseModel):
                     rows=changes.rows_updated, cols=common_cols
                 )
                 dest_repo.update(updated_rows)
-        self.db.commit()
 
     def _create_repo(self, /, table: domain.Table) -> adapter.Repository:
         return adapter.Repository(
