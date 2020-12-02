@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import itertools
-import logging
 import typing
+import warnings
 
 from py_db_adapter.domain import exceptions, rows
 
 __all__ = ("RowDiff",)
-
-logger = logging.getLogger(__name__)
 
 
 class RowDiff:
@@ -130,7 +128,7 @@ def compare_rows(
             and src_lkp_tbl.get(k, tuple()) != dest_lkp_tbl.get(k, tuple())
         }
     else:
-        logger.debug(
+        warnings.warn(
             "There were no common comparison columns, so no updates can be calculated."
         )
         updates = {}
@@ -177,9 +175,7 @@ def rows_to_lookup_table(
     if value_columns:
         value_cols = sorted(set(value_columns))
     else:
-        value_cols = sorted(
-            {col for col in rs.column_names if col not in pk_cols}
-        )
+        value_cols = sorted({col for col in rs.column_names if col not in pk_cols})
     return {
         tuple(row[col] for col in pk_cols): tuple(row[col] for col in value_cols)
         for row in rs.as_dicts()

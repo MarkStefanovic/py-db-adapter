@@ -73,9 +73,7 @@ class SqlAdapter(abc.ABC):
         raise NotImplementedError
 
     def definition(self, /, table: domain.Table) -> str:
-        pk_col_csv = ", ".join(
-            self.wrap(col) for col in sorted(table.pk_cols)
-        )
+        pk_col_csv = ", ".join(self.wrap(col) for col in sorted(table.pk_cols))
         adapters = sorted(
             (self._map_column_to_adapter(col) for col in table.columns),
             key=lambda c: c.column_metadata.column_name,
@@ -210,7 +208,9 @@ class SqlAdapter(abc.ABC):
         self, /, table: domain.Table
     ) -> typing.List[column_adapter.ColumnSqlAdapter[typing.Any]]:
         return [
-            self._map_column_to_adapter(col) for col in table.columns if col.primary_key
+            self._map_column_to_adapter(col)
+            for col in table.columns
+            if col.column_name in table.pk_cols
         ]
 
     def row_count(self, *, schema_name: typing.Optional[str], table_name: str) -> str:

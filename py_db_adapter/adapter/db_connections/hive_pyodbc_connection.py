@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-import logging
 import typing
 
 import pyodbc
 
+from py_db_adapter import domain
 from py_db_adapter.adapter.db_connections import pyodbc_connection
 from py_db_adapter.domain import exceptions
 
 __all__ = ("HivePyodbcConnection",)
 
-logger = logging.getLogger(__name__)
+logger = domain.logger.getChild(__name__)
 
 
 class HivePyodbcConnection(pyodbc_connection.PyodbcConnection):

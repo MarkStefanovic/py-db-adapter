@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import typing
 
 from py_db_adapter import domain
@@ -9,7 +8,7 @@ from py_db_adapter.domain import exceptions
 
 __all__ = ("Repository",)
 
-logger = logging.getLogger(__name__)
+logger = domain.logger.getChild(__name__)
 
 
 class Repository:

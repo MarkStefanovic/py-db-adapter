@@ -1,3 +1,4 @@
+from py_db_adapter.domain.logger import *
 from py_db_adapter.domain import exceptions
 from py_db_adapter.domain.data_types import *
 from py_db_adapter.domain.column import *
