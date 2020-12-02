@@ -121,11 +121,12 @@ def test_upsert_with_explicit_cols(
         "table_name": "customer2",
         "read_only": False,
     })
-    dest.upsert(
+    dest.sync(
         src=src,
         add=True,
         update=True,
         delete=True,
+        recreate=False,
     )
     check_customer2_table_in_sync(postgres_pyodbc_db_uri)
 
@@ -152,10 +153,11 @@ def test_upsert_with_default_cols(cache_dir: pathlib.Path, postgres_pyodbc_db_ur
         "table_name": "customer2",
         "read_only": False,
     })
-    dest.upsert(
+    dest.sync(
         src=src,
         add=True,
         update=True,
         delete=True,
+        recreate=False,
     )
     check_customer2_table_in_sync(postgres_pyodbc_db_uri)

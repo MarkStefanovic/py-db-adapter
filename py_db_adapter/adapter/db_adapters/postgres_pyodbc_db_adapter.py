@@ -48,15 +48,12 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
                 raise domain.exceptions.TableDoesNotExist(table_name=table_name, schema_name=schema_name)
 
             row_ct = result.first_value()
+            if not row_ct:
+                row_ct = con.fetch(
+                    f'SELECT COUNT(*) AS row_ct FROM "{schema_name}"."{table_name}"'
+                ).first_value()
 
-            if row_ct != 0:
-                return typing.cast(int, row_ct)
-
-            result = con.fetch(
-                f'SELECT COUNT(*) AS row_ct FROM "{schema_name}"."{table_name}"'
-            )
-            assert result is not None
-            return typing.cast(int, result.first_value())
+        return typing.cast(int, row_ct)
 
     @property
     def sql_adapter(self) -> sql_adapters.PostgreSQLAdapter:

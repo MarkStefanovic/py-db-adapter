@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 import logging
 import pathlib
 import typing
@@ -34,29 +33,39 @@ class Datasource(pydantic.BaseModel):
     def column_names(self) -> typing.Set[str]:
         return {col.column_name for col in self._table.columns}
 
-    def copy_table(self, /, ds: Datasource) -> bool:
+    def copy_table(
+        self, *, table: domain.Table, recreate: bool = False
+    ) -> typing.Tuple[domain.Table, bool]:
         if self.read_only:
             raise domain.exceptions.DatabaseIsReadOnly()
 
-        if not self.db.sql_adapter.table_exists(
+        dest_table = table.copy(
+            update={
+                "schema_name": self.schema_name,
+                "table_name": self.table_name,
+            }
+        )
+        dest_table_exists = self.db.table_exists(
             schema_name=self.schema_name, table_name=self.table_name
-        ):
+        )
+        if not dest_table_exists:
             logger.debug(
                 f"{self.schema_name}.{self.table_name} does not exist, so it will be created."
             )
-            dest_table = ds._table.copy(
-                update={
-                    "schema_name": self.schema_name,
-                    "table_name": self.table_name,
-                }
+            self.db.create_table(dest_table)
+            created = True
+        elif recreate:
+            logger.info(
+                f"{self.schema_name}.{self.table_name} exists, but recreate = True, so the table will be recreated."
             )
-            sql = self.db.sql_adapter.definition(dest_table)
-            self.db.connection.execute(sql)
-            logger.debug(f"{self.schema_name}.{self.table_name} was created.")
-            return True
+            self.db.drop_table(schema_name=self.schema_name, table_name=self.table_name)
+            self.db.create_table(dest_table)
+            created = True
         else:
             logger.debug(f"{self.schema_name}.{self.table_name} already exists.")
-            return False
+            created = False
+
+        return dest_table, created
 
     @property
     def fast_row_count(self) -> typing.Optional[int]:
@@ -66,7 +75,7 @@ class Datasource(pydantic.BaseModel):
 
     @property
     def row_count(self) -> int:
-        repo = self._create_repo()
+        repo = self._create_repo(self._table)
         return repo.row_count()
 
     @property
@@ -75,25 +84,22 @@ class Datasource(pydantic.BaseModel):
             schema_name=self.schema_name, table_name=self.table_name
         )
 
-    def upsert(
+    def sync(
         self,
         *,
         src: Datasource,
         add: bool = True,
         update: bool = True,
         delete: bool = True,
+        recreate: bool = False,
     ) -> None:
         if self.read_only:
             raise domain.exceptions.DatabaseIsReadOnly()
 
-        self.copy_table(src)
+        dest_table, created = self.copy_table(table=src._table, recreate=recreate)
 
-        if self.pk_cols:
-            pk_cols: typing.Set[str] = self.pk_cols
-        elif src.pk_cols:
+        if src.pk_cols:
             pk_cols = src.pk_cols
-        elif self._table.pk_cols:
-            pk_cols = self._table.pk_cols
         elif src._table.pk_cols:
             pk_cols = src._table.pk_cols
         else:
@@ -106,10 +112,10 @@ class Datasource(pydantic.BaseModel):
         elif src.compare_cols:
             compare_cols = src.compare_cols
         else:
-            compare_cols = self.column_names - pk_cols
+            compare_cols = dest_table.column_names - pk_cols
 
-        src_repo = src._create_repo()
-        dest_repo = self._create_repo()
+        src_repo = src._create_repo(src._table)
+        dest_repo = self._create_repo(dest_table)
 
         dest_rows = dest_repo.keys(True)
         if dest_rows.is_empty:
@@ -143,16 +149,16 @@ class Datasource(pydantic.BaseModel):
                 dest_repo.update(updated_rows)
         self.db.connection.commit()
 
-    def _create_repo(self) -> adapter.Repository:
+    def _create_repo(self, /, table: domain.Table) -> adapter.Repository:
         return adapter.Repository(
             db=self.db,
-            table=self._table,
+            table=table,
             change_tracking_columns=self.compare_cols,
             batch_size=self.max_batch_size,
             read_only=self.read_only,
         )
 
-    @functools.cached_property
+    @property
     def _table(self) -> domain.Table:
         return self.db.connection.inspect_table(
             schema_name=self.schema_name,

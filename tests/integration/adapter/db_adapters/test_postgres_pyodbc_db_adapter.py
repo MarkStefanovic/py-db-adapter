@@ -4,7 +4,10 @@ from py_db_adapter import adapter
 def test_postgres_pyodbc_db_adapter_table_exists(postgres_pyodbc_db_uri: str) -> None:
     sql_adapter = adapter.PostgreSQLAdapter()
     con = adapter.PyodbcConnection(
-        db_name="test_con", fast_executemany=False, uri=postgres_pyodbc_db_uri
+        db_name="test_con",
+        fast_executemany=False,
+        uri=postgres_pyodbc_db_uri,
+        autocommit=False,
     )
     db_adapter = adapter.PostgresPyodbcDbAdapter(
         con=con, postgres_sql_adapter=sql_adapter
@@ -19,7 +22,10 @@ def test_postgres_pyodbc_db_adapter_table_exists(postgres_pyodbc_db_uri: str) ->
 def test_postgres_pyodbc_db_adapter_fast_row_count(postgres_pyodbc_db_uri: str) -> None:
     sql_adapter = adapter.PostgreSQLAdapter()
     con = adapter.PyodbcConnection(
-        db_name="test_con", fast_executemany=False, uri=postgres_pyodbc_db_uri
+        db_name="test_con",
+        fast_executemany=False,
+        uri=postgres_pyodbc_db_uri,
+        autocommit=False,
     )
     db_adapter = adapter.PostgresPyodbcDbAdapter(
         con=con, postgres_sql_adapter=sql_adapter
