@@ -11,9 +11,9 @@ def test_postgres_decimal_column_sql_adapter_literal() -> None:
         table_name="dummy_table",
         column_name="dummy",
         nullable=False,
-        primary_key=False,
         precision=18,
         scale=2,
+        autoincrement=False,
     )
     sql_adapter = adapter.StandardDecimalColumnSqlAdapter(
         column=column, wrapper=lambda o: f'"{o}"'
@@ -29,7 +29,7 @@ def test_postgres_float_column_sql_adapter_literal() -> None:
         table_name="dummy_table",
         column_name="dummy",
         nullable=False,
-        primary_key=False,
+        autoincrement=False,
     )
     sql_adapter = adapter.StandardFloatColumnSqlAdapter(
         column=column,
