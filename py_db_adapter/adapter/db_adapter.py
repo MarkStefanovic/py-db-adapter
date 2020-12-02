@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import abc
-import logging
 import types
 import typing
 
@@ -11,7 +10,7 @@ from py_db_adapter.adapter import db_connection, sql_adapter
 __all__ = ("DbAdapter",)
 
 
-logger = logging.getLogger(__name__)
+logger = domain.logger.getChild(__name__)
 
 
 class DbAdapter(abc.ABC):

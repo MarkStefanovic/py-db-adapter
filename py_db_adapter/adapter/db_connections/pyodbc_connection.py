@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import pathlib
 import typing
 
@@ -12,7 +11,7 @@ from py_db_adapter.domain import exceptions
 
 __all__ = ("PyodbcConnection",)
 
-logger = logging.getLogger(__name__)
+logger = domain.logger.getChild(__name__)
 
 
 class PyodbcConnection(db_connection.DbConnection):

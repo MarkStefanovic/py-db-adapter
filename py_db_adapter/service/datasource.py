@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import pathlib
 import types
 import typing
@@ -11,7 +10,7 @@ from py_db_adapter import domain, adapter
 
 __all__ = ("Datasource", "postgres_pyodbc_datasource", "read_only_hive_datasource")
 
-logger = logging.getLogger(__name__)
+logger = domain.logger.getChild(__name__)
 
 
 class Datasource(pydantic.BaseModel):
