@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import pathlib
-import types
 import typing
 
 import pyodbc
@@ -17,7 +16,9 @@ logger = logging.getLogger(__name__)
 
 
 class PyodbcConnection(db_connection.DbConnection):
-    def __init__(self, *, db_name: str, fast_executemany: bool, uri: str, autocommit: bool):
+    def __init__(
+        self, *, db_name: str, fast_executemany: bool, uri: str, autocommit: bool
+    ):
         super().__init__()
 
         self._db_name = db_name
@@ -28,8 +29,19 @@ class PyodbcConnection(db_connection.DbConnection):
         self._con: typing.Optional[pyodbc.Connection] = None
         self._cur: typing.Optional[pyodbc.Cursor] = None
 
+    def close(self) -> None:
+        if self._cur is not None:
+            self._cur.close()
+            self._cur = None
+            logger.debug("Closed cursor.")
+        if self._con is not None:
+            self._con.close()
+            self._con = None
+            logger.debug(f"Closed connection to {self._db_name}.")
+
     def execute(
         self,
+        *,
         sql: str,
         params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
     ) -> None:
@@ -54,6 +66,7 @@ class PyodbcConnection(db_connection.DbConnection):
 
     def fetch(
         self,
+        *,
         sql: str,
         params: typing.Optional[typing.List[typing.Dict[str, typing.Any]]] = None,
     ) -> domain.Rows:
@@ -123,6 +136,11 @@ class PyodbcConnection(db_connection.DbConnection):
                 cache_dir=cache_dir,
             )
 
+    def open(self) -> None:
+        if self._con is None:  # noqa
+            self._con = pyodbc.connect(self._uri, autocommit=self._autocommit)
+            logger.debug(f"Opened connection to {self._db_name}.")
+
     def parameter_placeholder(self, /, column_name: str) -> str:
         return "?"
 
@@ -133,25 +151,3 @@ class PyodbcConnection(db_connection.DbConnection):
             )
         else:
             self._con.rollback()
-
-    def __enter__(self) -> PyodbcConnection:
-        if self._con is None:  # noqa
-            self._con = pyodbc.connect(self._uri, autocommit=self._autocommit)
-            logger.debug(f"Opened connection to {self._db_name}.")
-        return self
-
-    def __exit__(
-        self,
-        exc_type: typing.Optional[typing.Type[BaseException]],
-        exc_inst: typing.Optional[BaseException],
-        exc_tb: typing.Optional[types.TracebackType],
-    ) -> typing.Literal[False]:
-        if self._cur is not None:
-            self._cur.close()
-            self._cur = None
-            logger.debug("Closed cursor.")
-        if self._con is not None:
-            self._con.close()
-            self._con = None
-            logger.debug(f"Closed connection to {self._db_name}.")
-        return False

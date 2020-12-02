@@ -30,9 +30,3 @@ class HivePyodbcConnection(pyodbc_connection.PyodbcConnection):
 
     def rollback(self) -> None:
         raise exceptions.DatabaseIsReadOnly()
-
-    def __enter__(self) -> HivePyodbcConnection:
-        if self._con is None:
-            self._con = pyodbc.connect(self._uri, autocommit=True)
-            logger.debug(f"Opened connection to {self._db_name}.")
-        return self

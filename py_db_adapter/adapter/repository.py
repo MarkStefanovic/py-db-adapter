@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 class Repository:
+    """Intersection between adapter.DbAdapter and a domain.Table"""
+
     def __init__(
         self,
         *,
@@ -35,22 +37,22 @@ class Repository:
             raise exceptions.DatabaseIsReadOnly()
 
         for batch in rows.batches(self._batch_size):
-            sql = self._db.sql_adapter.add_rows(
+            sql = self._db._sql_adapter.add_rows(
                 schema_name=self._table.schema_name,
                 table_name=self._table.table_name,
-                parameter_placeholder=self._db.connection.parameter_placeholder,
+                parameter_placeholder=self._db._connection.parameter_placeholder,
                 rows=batch,
             )
             params = batch.as_dicts()
-            self._db.connection.execute(sql, params=params)
+            self._db.execute(sql=sql, params=params)
 
     def all(self, /, columns: typing.Optional[typing.Set[str]] = None) -> domain.Rows:
-        sql = self._db.sql_adapter.select_all(
+        sql = self._db._sql_adapter.select_all(
             schema_name=self.table.schema_name,
             table_name=self.table.table_name,
             columns=columns,
         )
-        result = self._db.connection.fetch(sql)
+        result = self._db.fetch(sql=sql)
         if result is None:
             return domain.Rows(
                 column_names=columns or sorted(self._table.column_names),
@@ -59,40 +61,39 @@ class Repository:
         else:
             return result
 
-    def create(self) -> None:
+    def create(self) -> bool:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
-
-        self._db.connection.execute(self._db.sql_adapter.definition(self._table))
+        else:
+            return self._db.create_table(self._table)
 
     def delete(self, /, rows: domain.Rows) -> None:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
 
-        sql = self._db.sql_adapter.delete(
+        sql = self._db._sql_adapter.delete(
             schema_name=self._table.schema_name,
             table_name=self._table.table_name,
             pk_cols=self._table.pk_cols,
-            parameter_placeholder=self._db.connection.parameter_placeholder,
+            parameter_placeholder=self._db._connection.parameter_placeholder,
             row_cols=rows.column_names,
         )
         for batch in rows.batches(self._batch_size):
             params = batch.as_dicts()
-            self._db.connection.execute(sql, params)
+            self._db.execute(sql=sql, params=params)
 
-    def drop(self) -> None:
+    def drop(self) -> bool:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
 
-        sql = self._db.sql_adapter.drop(
-            schema_name=self._table.schema_name,
+        return self._db.drop_table(
             table_name=self._table.table_name,
+            schema_name=self._table.schema_name,
         )
-        self._db.connection.execute(sql)
 
     @property
     def full_table_name(self) -> str:
-        return self._db.sql_adapter.full_table_name(
+        return self._db._sql_adapter.full_table_name(
             schema_name=self._table.schema_name, table_name=self._table.table_name
         )
 
@@ -104,7 +105,7 @@ class Repository:
     ) -> domain.Rows:
         batches: typing.List[domain.Rows] = []
         for batch in rows.batches(self._batch_size):
-            sql = self._db.sql_adapter.fetch_rows_by_primary_key_values(
+            sql = self._db._sql_adapter.fetch_rows_by_primary_key_values(
                 schema_name=self._table.schema_name,
                 table_name=self._table.table_name,
                 rows=batch,
@@ -112,12 +113,10 @@ class Repository:
                 select_cols=cols,
             )
             if len(self._pk_cols) == 1:  # where-clause uses IN (...)
-                row_batch = self._db.connection.fetch(sql)
+                row_batch = self._db.fetch(sql=sql)
             else:
                 pks = batch.subset(self._table.pk_cols).as_dicts()
-                row_batch = self._db.connection.fetch(sql, params=pks)
-            # params = batch.as_dicts()
-            # row_batch = self._db.connection.execute(sql, params=params)
+                row_batch = self._db.fetch(sql=sql, params=pks)
             if row_batch:
                 batches.append(row_batch)
         return domain.Rows.concat(batches)
@@ -130,7 +129,7 @@ class Repository:
 
     def keys(self, /, include_change_tracking_cols: bool = True) -> domain.Rows:
         if include_change_tracking_cols:
-            sql = self._db.sql_adapter.select_keys(
+            sql = self._db._sql_adapter.select_keys(
                 schema_name=self._table.schema_name,
                 table_name=self._table.table_name,
                 pk_cols=self._table.pk_cols,
@@ -138,14 +137,14 @@ class Repository:
                 include_change_tracking_cols=include_change_tracking_cols,
             )
         else:
-            sql = self._db.sql_adapter.select_keys(
+            sql = self._db._sql_adapter.select_keys(
                 schema_name=self._table.schema_name,
                 table_name=self._table.table_name,
                 pk_cols=self._table.pk_cols,
                 change_tracking_cols=set(),
                 include_change_tracking_cols=include_change_tracking_cols,
             )
-        result = self._db.connection.fetch(sql)
+        result = self._db.fetch(sql=sql)
         if result is None:
             return domain.Rows(
                 column_names=sorted(
@@ -158,18 +157,9 @@ class Repository:
 
     def row_count(self) -> int:
         """Get the number of rows in a table"""
-        result = self._db.connection.fetch(
-            self._db.sql_adapter.row_count(
-                schema_name=self._table.schema_name,
-                table_name=self._table.table_name,
-            ),
+        return self._db.row_count(
+            table_name=self._table.table_name, schema_name=self._table.schema_name
         )
-        if result and result.first_value():
-            return typing.cast(int, result.first_value())
-        else:
-            raise domain.exceptions.DeveloperError(
-                "The db adapter row_count method did not return a result."
-            )
 
     @property
     def table(self) -> domain.Table:
@@ -179,19 +169,19 @@ class Repository:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
 
-        sql = self._db.sql_adapter.truncate(
+        sql = self._db._sql_adapter.truncate(
             schema_name=self._table.schema_name,
             table_name=self._table.table_name,
         )
-        self._db.connection.execute(sql)
+        self._db.execute(sql=sql)
 
     def update(self, /, rows: domain.Rows) -> None:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
 
         for batch in rows.batches(self._batch_size):
-            sql = self._db.sql_adapter.update(
-                parameter_placeholder=self._db.connection.parameter_placeholder,
+            sql = self._db._sql_adapter.update(
+                parameter_placeholder=self._db._connection.parameter_placeholder,
                 pk_cols=self._table.pk_cols,
                 column_names=set(batch.column_names),
                 schema_name=self._table.schema_name,
@@ -208,4 +198,4 @@ class Repository:
             ordered_params = [
                 {k: row[k] for k in param_order} for row in unordered_params
             ]
-            self._db.connection.execute(sql, params=ordered_params)
+            self._db.execute(sql=sql, params=ordered_params)

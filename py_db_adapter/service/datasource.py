@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
+import types
 import typing
 
 import pydantic
@@ -147,7 +148,7 @@ class Datasource(pydantic.BaseModel):
                     rows=changes.rows_updated, cols=common_cols
                 )
                 dest_repo.update(updated_rows)
-        self.db.connection.commit()
+        self.db.commit()
 
     def _create_repo(self, /, table: domain.Table) -> adapter.Repository:
         return adapter.Repository(
@@ -160,12 +161,25 @@ class Datasource(pydantic.BaseModel):
 
     @property
     def _table(self) -> domain.Table:
-        return self.db.connection.inspect_table(
+        return self.db._connection.inspect_table(
             schema_name=self.schema_name,
             table_name=self.table_name,
             pk_cols=self.pk_cols,
             cache_dir=self.cache_dir,
         )
+
+    def __enter__(self) -> Datasource:
+        self.db.open()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: typing.Optional[typing.Type[BaseException]],
+        exc_inst: typing.Optional[BaseException],
+        exc_tb: typing.Optional[types.TracebackType],
+    ) -> typing.Literal[False]:
+        self.db.close()
+        return False
 
 
 def postgres_pyodbc_datasource(
