@@ -85,7 +85,9 @@ class Repository:
 
     def keys(self, /, include_change_tracking_cols: bool = True) -> domain.Rows:
         if include_change_tracking_cols:
-            return self._db.table_keys(table=self._table, compare_cols=self._change_tracking_columns)
+            return self._db.table_keys(
+                table=self._table, compare_cols=self._change_tracking_columns
+            )
         else:
             return self._db.table_keys(table=self._table, compare_cols=None)
 
@@ -103,10 +105,14 @@ class Repository:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
         else:
-            return self._db.truncate_table(schema_name=self._table.schema_name, table_name=self._table.table_name)
+            return self._db.truncate_table(
+                schema_name=self._table.schema_name, table_name=self._table.table_name
+            )
 
     def update(self, /, rows: domain.Rows) -> None:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
         else:
-            self._db.update_table(table=self._table, rows=rows, batch_size=self._batch_size)
+            self._db.update_table(
+                table=self._table, rows=rows, batch_size=self._batch_size
+            )
