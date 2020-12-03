@@ -97,10 +97,6 @@ class Repository:
             table_name=self._table.table_name, schema_name=self._table.schema_name
         )
 
-    @property
-    def table(self) -> domain.Table:
-        return self._table
-
     def truncate(self) -> None:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
