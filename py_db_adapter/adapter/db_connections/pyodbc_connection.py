@@ -11,7 +11,7 @@ from py_db_adapter.domain import exceptions
 
 __all__ = ("PyodbcConnection",)
 
-logger = domain.logger.getChild(__name__)
+logger = domain.logger.getChild("PyodbcConnection")
 
 
 class PyodbcConnection(db_connection.DbConnection):

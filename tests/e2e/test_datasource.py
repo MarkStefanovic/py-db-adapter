@@ -130,6 +130,7 @@ def test_sync_with_explicit_cols(
             delete=True,
             recreate=False,
         )
+        dest.commit()
         check_customer2_table_in_sync(postgres_pyodbc_db_uri)
 
 
@@ -163,4 +164,5 @@ def test_sync_with_default_cols(cache_dir: pathlib.Path, postgres_pyodbc_db_uri:
             delete=True,
             recreate=False,
         )
+        dest.commit()
         check_customer2_table_in_sync(postgres_pyodbc_db_uri)

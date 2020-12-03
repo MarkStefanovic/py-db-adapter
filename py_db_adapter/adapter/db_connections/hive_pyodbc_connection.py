@@ -10,7 +10,7 @@ from py_db_adapter.domain import exceptions
 
 __all__ = ("HivePyodbcConnection",)
 
-logger = domain.logger.getChild(__name__)
+logger = domain.logger.getChild("HivePyodbcConnection")
 
 
 class HivePyodbcConnection(pyodbc_connection.PyodbcConnection):
