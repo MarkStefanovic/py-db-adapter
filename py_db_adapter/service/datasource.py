@@ -136,17 +136,16 @@ class Datasource(pydantic.BaseModel):
                 ignore_missing_key_cols=True,
                 ignore_extra_key_cols=True,
             )
-            common_cols = src_repo.table.column_names & dest_repo.table.column_names
             if changes.rows_added.row_count and add:
                 new_rows = src_repo.fetch_rows_by_primary_key_values(
-                    rows=changes.rows_added, cols=common_cols
+                    rows=changes.rows_added, cols=src._table.column_names
                 )
                 dest_repo.add(new_rows)
             if changes.rows_deleted.row_count and delete:
                 dest_repo.delete(changes.rows_deleted)
             if changes.rows_updated.row_count and update:
                 updated_rows = src_repo.fetch_rows_by_primary_key_values(
-                    rows=changes.rows_updated, cols=common_cols
+                    rows=changes.rows_updated, cols=src._table.column_names
                 )
                 dest_repo.update(updated_rows)
 
