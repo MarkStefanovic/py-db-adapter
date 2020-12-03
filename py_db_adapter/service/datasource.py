@@ -10,7 +10,7 @@ from py_db_adapter import domain, adapter
 
 __all__ = ("Datasource", "postgres_pyodbc_datasource", "read_only_hive_datasource")
 
-logger = domain.logger.getChild(__name__)
+logger = domain.logger.getChild("Datasource")
 
 
 class Datasource(pydantic.BaseModel):
@@ -161,7 +161,7 @@ class Datasource(pydantic.BaseModel):
 
     @property
     def _table(self) -> domain.Table:
-        return self.db._connection.inspect_table(
+        return self.db.inspect_table(
             schema_name=self.schema_name,
             table_name=self.table_name,
             pk_cols=self.pk_cols,
