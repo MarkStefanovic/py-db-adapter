@@ -1,8 +1,6 @@
 import functools
-import re
 import typing
 
-from py_db_adapter import domain
 from py_db_adapter.adapter import (
     db_adapter,
     db_connection,
@@ -31,29 +29,7 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
     def fast_row_count(
         self, *, table_name: str, schema_name: typing.Optional[str] = None
     ) -> int:
-        """A faster row-count method than .row_count(), but is only an estimate"""
-        full_table_name = self._sql_adapter.full_table_name(
-            schema_name=schema_name, table_name=table_name
-        )
-        sql = f"DESCRIBE EXTENDED {full_table_name}"
-        with self._connection as con:
-            result = con.fetch(sql=sql)
-
-        # sourcery skip: remove-unnecessary-else
-        if result and not result.is_empty:
-            for row in result.as_tuples():
-                if row[0] == "Detailed Table Information":
-                    num_rows_match = re.search(r".*, numRows=(\d+), .*", row[1])
-                    if num_rows_match:
-                        return int(num_rows_match.group(1))
-            raise domain.exceptions.FastRowCountFailed(
-                table_name=table_name,
-                error_message=f"DESCRIBE EXTENDED {table_name} did not include numRows.",
-            )
-        else:
-            raise domain.exceptions.TableDoesNotExist(
-                table_name=table_name, schema_name=schema_name
-            )
+        raise NotImplementedError
 
     @property
     def _sql_adapter(self) -> sql_adapter.SqlAdapter:
