@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pathlib
+import pickle
 import types
 import typing
 
@@ -95,7 +96,7 @@ class Datasource(pydantic.BaseModel):
         update: bool = True,
         delete: bool = True,
         recreate: bool = False,
-    ) -> None:
+    ) -> typing.Dict[str, int]:
         if self.read_only:
             raise domain.exceptions.DatabaseIsReadOnly()
 
@@ -120,34 +121,81 @@ class Datasource(pydantic.BaseModel):
         src_repo = src._create_repo(src._table)
         dest_repo = self._create_repo(dest_table)
 
-        dest_rows = dest_repo.keys(include_change_tracking_cols=True)
+        if self.cache_dir:
+            fp = self.cache_dir / f"{dest_table.table_name}.dest-keys.p"
+            if fp.exists():
+                dest_rows = pickle.load(open(file=fp, mode="rb"))
+            else:
+                dest_rows = dest_repo.keys(True)
+        else:
+            dest_rows = dest_repo.keys(True)
+
         if dest_rows.is_empty:
             logger.info(
                 f"{self.table_name} is empty so the source rows will be fully loaded."
             )
             src_rows = src_repo.all()
             dest_repo.add(src_rows)
+            if self.cache_dir:
+                dest_keys = src_rows.subset(src.pk_cols | self.compare_cols)
+                dump_dest_keys(
+                    cache_dir=self.cache_dir,
+                    table_name=self.table_name,
+                    dest_keys=dest_keys,
+                )
+            return {
+                "added": src_rows.row_count,
+                "deleted": 0,
+                "updated": 0,
+            }
         else:
-            src_rows = src_repo.keys(include_change_tracking_cols=True)
+            src_keys = src_repo.keys(include_change_tracking_cols=True)
+            dump_dest_keys(
+                cache_dir=self.cache_dir, table_name=self.table_name, dest_keys=src_keys
+            )
             changes = dest_rows.compare(
-                rows=src_rows,
+                rows=src_keys,
                 key_cols=pk_cols,
                 compare_cols=compare_cols,
                 ignore_missing_key_cols=True,
                 ignore_extra_key_cols=True,
             )
-            if changes.rows_added.row_count and add:
-                new_rows = src_repo.fetch_rows_by_primary_key_values(
-                    rows=changes.rows_added, cols=src._table.column_names
+
+            if (
+                changes.rows_added.is_empty
+                and changes.rows_deleted.is_empty
+                and changes.rows_updated.is_empty
+            ):
+                logger.info(
+                    "Source and destination matched already, so there was no need to refresh."
                 )
-                dest_repo.add(new_rows)
-            if changes.rows_deleted.row_count and delete:
-                dest_repo.delete(changes.rows_deleted)
-            if changes.rows_updated.row_count and update:
-                updated_rows = src_repo.fetch_rows_by_primary_key_values(
-                    rows=changes.rows_updated, cols=src._table.column_names
-                )
-                dest_repo.update(updated_rows)
+                return {
+                    "added": 0,
+                    "deleted": 0,
+                    "updated": 0,
+                }
+            else:
+                if (rows_added := changes.rows_added.row_count) and add:
+                    new_rows = src_repo.fetch_rows_by_primary_key_values(
+                        rows=changes.rows_added, cols=src._table.column_names
+                    )
+                    dest_repo.add(new_rows)
+                    logger.info(f"Added {rows_added} rows to [{self.table_name}].")
+                if (rows_deleted := changes.rows_deleted.row_count) and delete:
+                    dest_repo.delete(changes.rows_deleted)
+                    logger.info(f"Deleted {rows_deleted} rows to [{self.table_name}].")
+                if (rows_updated := changes.rows_updated.row_count) and update:
+                    updated_rows = src_repo.fetch_rows_by_primary_key_values(
+                        rows=changes.rows_updated, cols=src._table.column_names
+                    )
+                    dest_repo.update(updated_rows)
+                    logger.info(f"Updated {rows_updated} rows to [{self.table_name}].")
+                self.db.commit()
+                return {
+                    "added": rows_added,
+                    "deleted": rows_deleted,
+                    "updated": rows_updated,
+                }
 
     def _create_repo(self, /, table: domain.Table) -> adapter.Repository:
         return adapter.Repository(
@@ -195,7 +243,7 @@ def postgres_pyodbc_datasource(
 ) -> Datasource:
     sql_adapter = adapter.PostgreSQLAdapter()
     con = adapter.PyodbcConnection(
-        db_name=db_name, fast_executemany=False, uri=db_uri, autocommit=False
+        db_name=db_name, fast_executemany=False, uri=db_uri, autocommit=True
     )
     db = adapter.PostgresPyodbcDbAdapter(con=con, postgres_sql_adapter=sql_adapter)
     return Datasource(
@@ -234,3 +282,8 @@ def read_only_hive_datasource(
         pk_cols=custom_pk_cols,
         compare_cols=compare_cols,
     )
+
+
+def dump_dest_keys(cache_dir: pathlib.Path, table_name: str, dest_keys: domain.Rows):
+    fp = cache_dir / f"{table_name}.dest-keys.p"
+    pickle.dump(dest_keys, open(fp, "wb"))
