@@ -12,17 +12,19 @@ def check_customer2_table_in_sync(db_uri: str) -> None:
             result = cur.execute(sql).fetchval()
             assert result > 0
 
-            sql = "SELECT * FROM sales.customer2"
+            sql = "SELECT * FROM sales.customer"
             result = cur.execute(sql).fetchall()
             customer_values = {
                 tuple(zip((col[0] for col in cur.description), row)) for row in result
             }
-            sql = "SELECT * FROM sales.customer"
+            sql = "SELECT * FROM sales.customer2"
             result = cur.execute(sql).fetchall()
             customer2_values = {
                 tuple(zip((col[0] for col in cur.description), row)) for row in result
             }
-    assert customer2_values == customer_values
+    assert (
+        customer2_values == customer_values
+    ), f"\ncustomer:\n{sorted(customer_values)}\n\ncustomer2:\n{sorted(customer2_values)}"
 
 
 def test_inspect_table(cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str) -> None:
@@ -79,8 +81,8 @@ def test_sync_with_explicit_cols(
         dest.commit()
         check_customer2_table_in_sync(postgres_pyodbc_db_uri)
 
-        # test update
-        with dest.db._connection._con.cursor() as cur:
+        with src.db._connection._con.cursor() as cur:
+            # test update
             cur.execute(
                 "UPDATE sales.customer SET customer_first_name = 'Frank' WHERE customer_first_name = 'Dan'"
             )
@@ -95,8 +97,7 @@ def test_sync_with_explicit_cols(
             dest.commit()
             check_customer2_table_in_sync(postgres_pyodbc_db_uri)
 
-        # test delete
-        with dest.db._connection._con.cursor() as cur:
+            # test delete
             cur.execute(
                 "DELETE FROM sales.customer WHERE customer_first_name = 'Steve'"
             )

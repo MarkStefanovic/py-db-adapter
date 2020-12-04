@@ -49,7 +49,8 @@ class PyodbcConnection(db_connection.DbConnection):
             raise exceptions.DeveloperError(
                 "Attempted to run .execute() outside of a with block."
             )
-        logger.debug(f"Executing sql:\n\t{std_sql}\n\tparams={params}")
+        logger.debug(f"EXECUTE:\n\t{std_sql}\n\tparams={params}")
+        print(f"EXECUTE:\n\t{std_sql}\n\tparams={params}")  # TODO: remove print statements
         positional_params = [tuple(param.values()) for param in params or {}]
         if self._cur is None:
             self._cur = self._con.cursor()
@@ -75,7 +76,8 @@ class PyodbcConnection(db_connection.DbConnection):
                 "Attempted to run .execute() outside of a with block."
             )
 
-        logger.debug(f"Executing sql:\n\t{std_sql}\n\tparams={params}")
+        logger.debug(f"FETCH:\n\t{std_sql}\n\tparams={params}")
+        print(f"FETCH:\n\t{std_sql}\n\tparams={params}")  # TODO: remove print statements
         positional_params = [tuple(param.values()) for param in params or {}]
         if self._cur is None:
             self._cur = self._con.cursor()
