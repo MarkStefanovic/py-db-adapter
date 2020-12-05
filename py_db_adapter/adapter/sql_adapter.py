@@ -114,6 +114,12 @@ class SqlAdapter(abc.ABC):
         )
         return f"DROP TABLE {full_table_name}"
 
+    @abc.abstractmethod
+    def fast_row_count(
+        self, *, schema_name: typing.Optional[str], table_name: str
+    ) -> str:
+        raise NotImplementedError
+
     def fetch_rows_by_primary_key_values(
         self,
         *,
