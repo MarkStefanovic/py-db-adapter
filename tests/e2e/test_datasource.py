@@ -81,7 +81,7 @@ def test_sync_with_explicit_cols(
         dest.commit()
         check_customer2_table_in_sync(postgres_pyodbc_db_uri)
 
-        with src.db._connection._con.cursor() as cur:
+        with src.db._connection._con.cursor() as cur:  # type: ignore
             # test update
             cur.execute(
                 "UPDATE sales.customer SET customer_first_name = 'Frank' WHERE customer_first_name = 'Dan'"

@@ -1,14 +1,12 @@
 import os
 import pathlib
+import typing
 
 import dotenv
 import pyodbc
 import pytest
 
-import sqlalchemy as sa
-import typing
-
-from py_db_adapter import domain, adapter
+from py_db_adapter import domain
 
 dotenv.load_dotenv(dotenv.find_dotenv())
 
@@ -49,7 +47,11 @@ def tear_down_db(con: pyodbc.Connection, /) -> None:
 
 
 @pytest.fixture(scope="function")
-def postgres_pyodbc_db_uri() -> typing.Generator[str, None, None]:
+def postgres_pyodbc_db_uri(cache_dir: pathlib.Path) -> typing.Generator[str, None, None]:
+    if cache_dir.exists():
+        key_cache = cache_dir / "customer2.dest-keys.p"
+        key_cache.unlink(missing_ok=True)
+
     db_uri = os.environ["PYODBC_URI"]
     with pyodbc.connect(db_uri) as con:
         set_up_db(con)

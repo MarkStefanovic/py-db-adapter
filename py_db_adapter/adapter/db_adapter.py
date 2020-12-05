@@ -29,12 +29,6 @@ class DbAdapter(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def fast_row_count(
-        self, *, table_name: str, schema_name: typing.Optional[str] = None
-    ) -> int:
-        raise NotImplementedError
-
-    @abc.abstractmethod
     def table_exists(
         self, *, table_name: str, schema_name: typing.Optional[str] = None
     ) -> bool:
@@ -104,6 +98,31 @@ class DbAdapter(abc.ABC):
             return True
         else:
             return False
+
+    def fast_row_count(
+        self, *, table_name: str, schema_name: typing.Optional[str] = None
+    ) -> int:
+        if schema_name is None:
+            raise domain.exceptions.SchemaIsRequired(
+                f"A schema is required for PostgresPyodbcDbAdapter's fast_row_count method"
+            )
+
+        sql = self._sql_adapter.fast_row_count(
+            schema_name=schema_name, table_name=table_name
+        )
+        with self._connection as con:
+            result = con.fetch(sql=sql, params=None)
+            assert result is not None
+            if result.is_empty:
+                raise domain.exceptions.TableDoesNotExist(
+                    table_name=table_name, schema_name=schema_name
+                )
+
+            row_ct = result.first_value()
+            if not row_ct:
+                return self.row_count(schema_name=schema_name, table_name=table_name)
+
+        return typing.cast(int, row_ct)
 
     def fetch_rows_by_primary_key(
         self,

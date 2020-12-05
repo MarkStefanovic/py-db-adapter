@@ -104,6 +104,12 @@ class InvalidCustomPrimaryKey(DataError):
         self.invalid_column_names = invalid_column_names
 
 
+class InvalidSqlGenerated(DeveloperError):
+    def __init__(self, sql: str, message: str):
+        self.sql = sql
+        super().__init__(message)
+
+
 class DatabaseIsReadOnly(DeveloperError):
     def __init__(self) -> None:
         super().__init__("The database is read only.")

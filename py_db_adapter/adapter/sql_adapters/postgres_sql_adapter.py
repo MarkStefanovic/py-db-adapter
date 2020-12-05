@@ -510,6 +510,23 @@ class PostgreSQLAdapter(sql_adapter.SqlAdapter):
             column=column, wrapper=self.wrap
         )
 
+    def fast_row_count(
+        self, *, schema_name: typing.Optional[str], table_name: str
+    ) -> str:
+        if schema_name:
+            return f"""
+                SELECT n_live_tup
+                FROM   pg_stat_all_tables
+                WHERE  schemaname = '{schema_name}'
+                AND    relname = '{table_name}'
+            """
+        else:
+            return f"""
+                SELECT n_live_tup
+                FROM   pg_stat_all_tables
+                AND    relname = '{table_name}'
+            """
+
     def table_exists(self, schema_name: typing.Optional[str], table_name: str) -> str:
         return (
             f"SELECT CASE WHEN to_regclass('{self.full_table_name(schema_name=schema_name, table_name=table_name)}') "

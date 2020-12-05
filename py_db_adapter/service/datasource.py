@@ -9,7 +9,12 @@ import pydantic
 
 from py_db_adapter import domain, adapter
 
-__all__ = ("Datasource", "postgres_pyodbc_datasource", "read_only_hive_datasource")
+__all__ = (
+    "Datasource",
+    "postgres_pyodbc_datasource",
+    "read_only_hive_datasource",
+    "sql_server_pyodbc_datasource",
+)
 
 logger = domain.logger.getChild("Datasource")
 
@@ -137,7 +142,9 @@ class Datasource(pydantic.BaseModel):
             src_rows = src_repo.all()
             dest_repo.add(src_rows)
             if self.cache_dir:
-                dest_keys = src_rows.subset(src.pk_cols | self.compare_cols)
+                dest_keys = src_rows.subset(
+                    (src.pk_cols or set()) | (self.compare_cols or set())
+                )
                 dump_dest_keys(
                     cache_dir=self.cache_dir,
                     table_name=self.table_name,
@@ -150,9 +157,12 @@ class Datasource(pydantic.BaseModel):
             }
         else:
             src_keys = src_repo.keys(include_change_tracking_cols=True)
-            dump_dest_keys(
-                cache_dir=self.cache_dir, table_name=self.table_name, dest_keys=src_keys
-            )
+            if self.cache_dir:
+                dump_dest_keys(
+                    cache_dir=self.cache_dir,
+                    table_name=self.table_name,
+                    dest_keys=src_keys,
+                )
             changes = dest_rows.compare(
                 rows=src_keys,
                 key_cols=pk_cols,
@@ -240,10 +250,11 @@ def postgres_pyodbc_datasource(
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
     max_batch_size: int = 1_000,
     read_only: bool = False,
+    autocommit: bool = False,
 ) -> Datasource:
     sql_adapter = adapter.PostgreSQLAdapter()
     con = adapter.PyodbcConnection(
-        db_name=db_name, fast_executemany=False, uri=db_uri, autocommit=True
+        db_name=db_name, fast_executemany=False, uri=db_uri, autocommit=autocommit
     )
     db = adapter.PostgresPyodbcDbAdapter(con=con, postgres_sql_adapter=sql_adapter)
     return Datasource(
@@ -284,6 +295,42 @@ def read_only_hive_datasource(
     )
 
 
-def dump_dest_keys(cache_dir: pathlib.Path, table_name: str, dest_keys: domain.Rows):
+def sql_server_pyodbc_datasource(
+    *,
+    db_name: str,
+    db_uri: str,
+    table_name: str,
+    schema_name: typing.Optional[str] = None,
+    cache_dir: typing.Optional[pathlib.Path] = None,
+    compare_cols: typing.Optional[typing.Set[str]] = None,
+    custom_pk_cols: typing.Optional[typing.Set[str]] = None,
+    max_batch_size: int = 1_000,
+    read_only: bool = False,
+    fast_executemany: bool = True,
+    autocommit: bool = False,
+) -> Datasource:
+    sql_adapter = adapter.SqlServerSQLAdapter()
+    con = adapter.PyodbcConnection(
+        db_name=db_name,
+        fast_executemany=fast_executemany,
+        uri=db_uri,
+        autocommit=autocommit,
+    )
+    db = adapter.SqlServerPyodbcDbAdapter(con=con, sql_server_sql_adapter=sql_adapter)
+    return Datasource(
+        db=db,
+        schema_name=schema_name,
+        table_name=table_name,
+        cache_dir=cache_dir,
+        read_only=read_only,
+        pk_cols=custom_pk_cols,
+        compare_cols=compare_cols,
+        max_batch_size=max_batch_size,
+    )
+
+
+def dump_dest_keys(
+    cache_dir: pathlib.Path, table_name: str, dest_keys: domain.Rows
+) -> None:
     fp = cache_dir / f"{table_name}.dest-keys.p"
     pickle.dump(dest_keys, open(fp, "wb"))

@@ -603,6 +603,11 @@ class HiveSQLAdapter(sql_adapter.SqlAdapter):
             column=column, wrapper=self.wrap
         )
 
+    def fast_row_count(
+        self, *, schema_name: typing.Optional[str], table_name: str
+    ) -> str:
+        raise NotImplementedError
+
     def drop(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
         raise NotImplementedError
 
