@@ -158,12 +158,14 @@ class DbAdapter(abc.ABC):
         schema_name: typing.Optional[str] = None,
         pk_cols: typing.Optional[typing.Set[str]] = None,
         cache_dir: typing.Optional[pathlib.Path] = None,
+        sync_cols: typing.Optional[typing.Set[str]] = None,
     ) -> domain.Table:
         return self._connection.inspect_table(
             table_name=table_name,
             schema_name=schema_name,
             pk_cols=pk_cols,
             cache_dir=cache_dir,
+            sync_cols=sync_cols,
         )
 
     def open(self) -> None:

@@ -120,6 +120,7 @@ class PyodbcConnection(db_connection.DbConnection):
         schema_name: typing.Optional[str] = None,
         pk_cols: typing.Optional[typing.Set[str]] = None,
         cache_dir: typing.Optional[pathlib.Path] = None,
+        sync_cols: typing.Optional[typing.Set[str]] = None,
     ) -> domain.Table:
         if cache_dir is None:
             return pyodbc_inspector.pyodbc_inspect_table(
