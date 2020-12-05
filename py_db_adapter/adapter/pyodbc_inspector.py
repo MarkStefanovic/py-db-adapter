@@ -49,6 +49,7 @@ def pyodbc_inspect_table(
     table_name: str,
     schema_name: typing.Optional[str] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
+    sync_cols: typing.Optional[typing.Set[str]] = None,
 ) -> domain.Table:
     if not pyodbc_table_exists(con=con, table_name=table_name, schema_name=schema_name):
         raise exceptions.TableDoesNotExist(
@@ -66,70 +67,72 @@ def pyodbc_inspect_table(
 
     pk_col_names = {col.column_name for col in pk_cols}
 
+    include_all_cols = not sync_cols
     for col in pyodbc_cols:
-        if col.domain_data_type == domain.DataType.Bool:
-            domain_col: domain.Column = domain.BooleanColumn(
-                schema_name=schema_name,
-                table_name=table_name,
-                column_name=col.column_name,
-                nullable=col.nullable_flag,
-                autoincrement=False,
-            )
-        elif col.domain_data_type == domain.DataType.Date:
-            domain_col = domain.DateColumn(
-                schema_name=schema_name,
-                table_name=table_name,
-                column_name=col.column_name,
-                nullable=col.nullable_flag,
-                autoincrement=False,
-            )
-        elif col.domain_data_type == domain.DataType.DateTime:
-            domain_col = domain.DateTimeColumn(
-                schema_name=schema_name,
-                table_name=table_name,
-                column_name=col.column_name,
-                nullable=col.nullable_flag,
-                autoincrement=False,
-            )
-        elif col.domain_data_type == domain.DataType.Decimal:
-            domain_col = domain.DecimalColumn(
-                schema_name=schema_name,
-                table_name=table_name,
-                column_name=col.column_name,
-                nullable=col.nullable_flag,
-                precision=col.precision or 18,
-                scale=col.scale or 2,
-                autoincrement=False,
-            )
-        elif col.domain_data_type == domain.DataType.Float:
-            domain_col = domain.FloatColumn(
-                schema_name=schema_name,
-                table_name=table_name,
-                column_name=col.column_name,
-                nullable=col.nullable_flag,
-                autoincrement=False,
-            )
-        elif col.domain_data_type == domain.DataType.Int:
-            domain_col = domain.IntegerColumn(
-                autoincrement=col.autoincrement_flag,
-                schema_name=schema_name,
-                table_name=table_name,
-                column_name=col.column_name,
-                nullable=col.nullable_flag,
-            )
-        elif col.domain_data_type == domain.DataType.Text:
-            domain_col = domain.TextColumn(
-                schema_name=schema_name,
-                table_name=table_name,
-                column_name=col.column_name,
-                nullable=col.nullable_flag,
-                max_length=col.length,
-                autoincrement=False,
-            )
-        else:
-            raise ValueError(f"Unrecognized domain_data_type: {col.domain_data_type!r}")
+        if include_all_cols or col.column_name in sync_cols:
+            if col.domain_data_type == domain.DataType.Bool:
+                domain_col: domain.Column = domain.BooleanColumn(
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    column_name=col.column_name,
+                    nullable=col.nullable_flag,
+                    autoincrement=False,
+                )
+            elif col.domain_data_type == domain.DataType.Date:
+                domain_col = domain.DateColumn(
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    column_name=col.column_name,
+                    nullable=col.nullable_flag,
+                    autoincrement=False,
+                )
+            elif col.domain_data_type == domain.DataType.DateTime:
+                domain_col = domain.DateTimeColumn(
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    column_name=col.column_name,
+                    nullable=col.nullable_flag,
+                    autoincrement=False,
+                )
+            elif col.domain_data_type == domain.DataType.Decimal:
+                domain_col = domain.DecimalColumn(
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    column_name=col.column_name,
+                    nullable=col.nullable_flag,
+                    precision=col.precision or 18,
+                    scale=col.scale or 2,
+                    autoincrement=False,
+                )
+            elif col.domain_data_type == domain.DataType.Float:
+                domain_col = domain.FloatColumn(
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    column_name=col.column_name,
+                    nullable=col.nullable_flag,
+                    autoincrement=False,
+                )
+            elif col.domain_data_type == domain.DataType.Int:
+                domain_col = domain.IntegerColumn(
+                    autoincrement=col.autoincrement_flag,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    column_name=col.column_name,
+                    nullable=col.nullable_flag,
+                )
+            elif col.domain_data_type == domain.DataType.Text:
+                domain_col = domain.TextColumn(
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    column_name=col.column_name,
+                    nullable=col.nullable_flag,
+                    max_length=col.length,
+                    autoincrement=False,
+                )
+            else:
+                raise ValueError(f"Unrecognized domain_data_type: {col.domain_data_type!r}")
 
-        domain_cols.append(domain_col)
+            domain_cols.append(domain_col)
 
     if custom_pk_cols:
         col_names = {col.column_name for col in domain_cols}

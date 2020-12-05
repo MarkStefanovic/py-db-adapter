@@ -25,6 +25,7 @@ class Datasource(pydantic.BaseModel):
     db: adapter.DbAdapter
     max_batch_size: int
     pk_cols: typing.Optional[typing.Set[str]]
+    sync_cols: typing.Optional[typing.Set[str]]
     read_only: bool
     schema_name: typing.Optional[str]
     table_name: str
@@ -223,6 +224,7 @@ class Datasource(pydantic.BaseModel):
             table_name=self.table_name,
             pk_cols=self.pk_cols,
             cache_dir=self.cache_dir,
+            sync_cols=self.sync_cols,
         )
 
     def __enter__(self) -> Datasource:
@@ -248,6 +250,7 @@ def postgres_pyodbc_datasource(
     cache_dir: typing.Optional[pathlib.Path] = None,
     compare_cols: typing.Optional[typing.Set[str]] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
+    sync_cols: typing.Optional[typing.Set[str]] = None,
     max_batch_size: int = 1_000,
     read_only: bool = False,
     autocommit: bool = False,
@@ -265,6 +268,7 @@ def postgres_pyodbc_datasource(
         read_only=read_only,
         pk_cols=custom_pk_cols,
         compare_cols=compare_cols,
+        sync_cols=sync_cols,
         max_batch_size=max_batch_size,
     )
 
