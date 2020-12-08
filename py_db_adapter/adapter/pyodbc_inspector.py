@@ -29,6 +29,7 @@ def pyodbc_inspect_table_and_cache(
     table_name: str,
     schema_name: typing.Optional[str] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
+    include_cols: typing.Optional[typing.Set[str]] = None,
 ) -> domain.Table:
     fp = cache_dir / f"{schema_name}.{table_name}.p"
     if fp.exists():
@@ -39,6 +40,7 @@ def pyodbc_inspect_table_and_cache(
             table_name=table_name,
             schema_name=schema_name,
             custom_pk_cols=custom_pk_cols,
+            include_cols=include_cols,
         )
         pickle.dump(table, open(fp, "wb"))
     return table
@@ -49,7 +51,7 @@ def pyodbc_inspect_table(
     table_name: str,
     schema_name: typing.Optional[str] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
-    sync_cols: typing.Optional[typing.Set[str]] = None,
+    include_cols: typing.Optional[typing.Set[str]] = None
 ) -> domain.Table:
     if not pyodbc_table_exists(con=con, table_name=table_name, schema_name=schema_name):
         raise exceptions.TableDoesNotExist(
@@ -65,16 +67,19 @@ def pyodbc_inspect_table(
             schema_name=schema_name, table_name=table_name
         )
 
-    pk_col_names = {col.column_name for col in pk_cols}
+    pk_col_names = {col.column_name.lower() for col in pk_cols}
 
-    include_all_cols = not sync_cols
+    if include_cols:
+        include_cols = {col.lower() for col in include_cols}
+
     for col in pyodbc_cols:
-        if include_all_cols or col.column_name in sync_cols:
+        column_name = col.column_name.lower()
+        if include_cols is None or column_name in include_cols:
             if col.domain_data_type == domain.DataType.Bool:
                 domain_col: domain.Column = domain.BooleanColumn(
                     schema_name=schema_name,
                     table_name=table_name,
-                    column_name=col.column_name,
+                    column_name=column_name,
                     nullable=col.nullable_flag,
                     autoincrement=False,
                 )
@@ -82,7 +87,7 @@ def pyodbc_inspect_table(
                 domain_col = domain.DateColumn(
                     schema_name=schema_name,
                     table_name=table_name,
-                    column_name=col.column_name,
+                    column_name=column_name,
                     nullable=col.nullable_flag,
                     autoincrement=False,
                 )
@@ -90,7 +95,7 @@ def pyodbc_inspect_table(
                 domain_col = domain.DateTimeColumn(
                     schema_name=schema_name,
                     table_name=table_name,
-                    column_name=col.column_name,
+                    column_name=column_name,
                     nullable=col.nullable_flag,
                     autoincrement=False,
                 )
@@ -98,7 +103,7 @@ def pyodbc_inspect_table(
                 domain_col = domain.DecimalColumn(
                     schema_name=schema_name,
                     table_name=table_name,
-                    column_name=col.column_name,
+                    column_name=column_name,
                     nullable=col.nullable_flag,
                     precision=col.precision or 18,
                     scale=col.scale or 2,
@@ -108,7 +113,7 @@ def pyodbc_inspect_table(
                 domain_col = domain.FloatColumn(
                     schema_name=schema_name,
                     table_name=table_name,
-                    column_name=col.column_name,
+                    column_name=column_name,
                     nullable=col.nullable_flag,
                     autoincrement=False,
                 )
@@ -117,25 +122,27 @@ def pyodbc_inspect_table(
                     autoincrement=col.autoincrement_flag,
                     schema_name=schema_name,
                     table_name=table_name,
-                    column_name=col.column_name,
+                    column_name=column_name,
                     nullable=col.nullable_flag,
                 )
             elif col.domain_data_type == domain.DataType.Text:
                 domain_col = domain.TextColumn(
                     schema_name=schema_name,
                     table_name=table_name,
-                    column_name=col.column_name,
+                    column_name=column_name,
                     nullable=col.nullable_flag,
                     max_length=col.length,
                     autoincrement=False,
                 )
             else:
-                raise ValueError(f"Unrecognized domain_data_type: {col.domain_data_type!r}")
+                raise ValueError(
+                    f"Unrecognized domain_data_type: {col.domain_data_type!r}"
+                )
 
             domain_cols.append(domain_col)
 
     if custom_pk_cols:
-        col_names = {col.column_name for col in domain_cols}
+        col_names = {col.column_name.lower() for col in domain_cols}
         missing_pk_col_names = {col for col in pk_col_names if col not in col_names}
         if missing_pk_col_names:
             raise exceptions.InvalidCustomPrimaryKey(sorted(missing_pk_col_names))
@@ -326,59 +333,131 @@ def _inspect_cols(
         #       num_prec_radix instead of radix
         return [
             PyodbcColumn(
-                auto_increment=(
-                    col.auto_increment if hasattr(col, "auto_increment") else 0
-                ),
-                base_typeid=(
-                    getattr(col, "base typeid") if hasattr(col, "base typeid") else None
-                ),
+                auto_increment=get_autoincrement(col),
+                base_typeid=get_base_type_id(col),
                 char_octet_length=col.char_octet_length,
                 column_def=col.column_def,
                 column_name=col.column_name,
                 data_type=col.data_type,
-                display_size=(
-                    col.display_size
-                    if hasattr(col, "display_size")
-                    else col.column_size
-                ),
-                field_type=(
-                    col.field_type if hasattr(col, "field_type") else col.user_data_type
-                ),
+                display_size=get_display_size(col),
+                field_type=get_field_type(col),
                 is_nullable=handle_is_nullable(col.is_nullable),
-                length=(col.length if hasattr(col, "length") else None),
+                length=get_length(col),
                 nullable=col.nullable,
                 ordinal_position=col.ordinal_position,
-                physical_number=(
-                    getattr(col, "physical number")
-                    if hasattr(col, "physical number")
-                    else None
-                ),
-                precision=(col.precision if hasattr(col, "precision") else None),
-                radix=(col.radix if hasattr(col, "radix") else col.num_prec_radix),
-                remarks=col.remarks,
-                scale=(col.scale if hasattr(col, "scale") else None),
+                physical_number=get_physical_number(col),
+                precision=get_precision(col),
+                radix=get_radix(col),
+                remarks=get_remarks(col),
+                scale=get_scale(col),
                 sql_data_type=col.sql_data_type,
                 sql_datetime_sub=col.sql_datetime_sub,
-                table_info=(
-                    getattr(col, "table info") if hasattr(col, "table info") else None
-                ),
-                table_oid=(
-                    getattr(col, "table oid") if hasattr(col, "table oid") else None
-                ),
+                table_info=get_table_info(col),
+                table_oid=get_table_oid(col),
                 table_name=col.table_name,
-                table_owner=(
-                    col.table_owner if hasattr(col, "table_owner") else col.table_schem
-                ),
-                table_qualifier=(
-                    col.table_qualifier
-                    if hasattr(col, "table_qualifier")
-                    else col.table_cat
-                ),
+                table_owner=get_table_schema(col),
+                table_qualifier=get_db_name(col),
                 type_name=col.type_name,
-                typmod=(col.typmod if hasattr(col, "typmod") else None),
+                typmod=get_typemod(col),
             )
             for col in cur.columns(table_name, schema=schema_name)
         ]
+
+
+def get_autoincrement(row: pyodbc.Row, /) -> int:
+    if hasattr(row, "auto_increment"):
+        return row.auto_increment
+    return 0
+
+
+def get_base_type_id(row: pyodbc.Row, /) -> typing.Optional[int]:
+    if hasattr(row, "base typeid"):
+        return getattr(row, "base typeid")
+    return None
+
+
+def get_db_name(row: pyodbc.Row, /) -> str:
+    if hasattr(row, "table_qualifier"):
+        return row.table_qualifier
+    else:
+        return row.table_cat
+
+
+def get_display_size(row: pyodbc.Row, /) -> int:
+    if hasattr(row, "display_size"):
+        return row.display_size
+    return row.column_size
+
+
+def get_field_type(row: pyodbc.Row, /) -> int:
+    if hasattr(row, "field_type"):
+        return row.field_type
+    elif hasattr(row, "user_data_type"):
+        return row.user_data_type
+    else:
+        return row.ss_data_type  # sql server
+
+
+def get_length(row: pyodbc.Row, /) -> typing.Optional[int]:
+    if hasattr(row, "length"):
+        return row.length
+    return None
+
+
+def get_physical_number(row: pyodbc.Row, /) -> typing.Optional[int]:
+    if hasattr(row, "physical number"):
+        return getattr(row, "physical number")
+    return None
+
+
+def get_precision(row: pyodbc.Row, /) -> typing.Optional[int]:
+    if hasattr(row, "precision"):
+        return row.precision
+    return None
+
+
+def get_radix(row: pyodbc.Row, /) -> typing.Optional[int]:
+    if hasattr(row, "radix"):
+        return row.radix
+    return row.num_prec_radix
+
+
+def get_remarks(row: pyodbc.Row, /) -> str:
+    # remarks may be None on SQL Server
+    if hasattr(row, "remarks"):
+        return row.remarks or ""
+    return ""
+
+
+def get_scale(row: pyodbc.Row, /) -> typing.Optional[int]:
+    if hasattr(row, "scale"):
+        return row.scale
+    return None
+
+
+def get_table_info(row: pyodbc.Row, /) -> typing.Optional[str]:
+    if hasattr(row, "table info"):
+        return getattr(row, "table info")
+    return None
+
+
+def get_table_oid(row: pyodbc.Row, /) -> typing.Optional[int]:
+    if hasattr(row, "table oid"):
+        return getattr(row, "table oid")
+    return None
+
+
+def get_table_schema(row: pyodbc.Row, /) -> str:
+    if hasattr(row, "table_owner"):
+        return row.table_owner
+    else:
+        return row.table_schem
+
+
+def get_typemod(row: pyodbc.Row, /) -> typing.Optional[int]:
+    if hasattr(row, "typmod"):
+        return row.typmod
+    return None
 
 
 def _inspect_pks(
@@ -391,8 +470,8 @@ def _inspect_pks(
                 key_seq=col.key_seq,
                 pk_name=col.pk_name,
                 table_name=col.table_name,
-                table_owner=col.table_owner,
-                table_qualifier=col.table_qualifier,
+                table_owner=get_table_schema(col),
+                table_qualifier=get_db_name(col),
             )
             for col in cur.primaryKeys(table_name, schema=schema_name)
         ]

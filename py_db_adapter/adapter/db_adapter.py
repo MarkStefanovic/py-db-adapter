@@ -142,13 +142,8 @@ class DbAdapter(abc.ABC):
                 pk_cols=pk_cols,
                 select_cols=cols,
             )
-            if len(pk_cols) == 1:  # where-clause uses IN (...)
-                row_batch = self._connection.fetch(sql=sql, params=None)
-            else:
-                pks = batch.subset(table.pk_cols).as_dicts()
-                row_batch = self._connection.fetch(sql=sql, params=pks)
-            if row_batch:
-                batches.append(row_batch)
+            row_batch = self._connection.fetch(sql=sql, params=None)
+            batches.append(row_batch)
         return domain.Rows.concat(batches)
 
     def inspect_table(
@@ -157,15 +152,15 @@ class DbAdapter(abc.ABC):
         table_name: str,
         schema_name: typing.Optional[str] = None,
         pk_cols: typing.Optional[typing.Set[str]] = None,
+        include_cols: typing.Optional[typing.Set[str]] = None,
         cache_dir: typing.Optional[pathlib.Path] = None,
-        sync_cols: typing.Optional[typing.Set[str]] = None,
     ) -> domain.Table:
         return self._connection.inspect_table(
             table_name=table_name,
             schema_name=schema_name,
             pk_cols=pk_cols,
+            include_cols=include_cols,
             cache_dir=cache_dir,
-            sync_cols=sync_cols,
         )
 
     def open(self) -> None:
