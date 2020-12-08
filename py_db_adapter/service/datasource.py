@@ -25,7 +25,7 @@ class Datasource(pydantic.BaseModel):
     db: adapter.DbAdapter
     max_batch_size: int
     pk_cols: typing.Optional[typing.Set[str]]
-    sync_cols: typing.Optional[typing.Set[str]]
+    include_cols: typing.Optional[typing.Set[str]]
     read_only: bool
     schema_name: typing.Optional[str]
     table_name: str
@@ -140,7 +140,7 @@ class Datasource(pydantic.BaseModel):
             logger.info(
                 f"{self.table_name} is empty so the source rows will be fully loaded."
             )
-            src_rows = src_repo.all()
+            src_rows = src_repo.all(self.include_cols)
             dest_repo.add(src_rows)
             if self.cache_dir:
                 dest_keys = src_rows.subset(
@@ -223,8 +223,8 @@ class Datasource(pydantic.BaseModel):
             schema_name=self.schema_name,
             table_name=self.table_name,
             pk_cols=self.pk_cols,
+            include_cols=self.include_cols,
             cache_dir=self.cache_dir,
-            sync_cols=self.sync_cols,
         )
 
     def __enter__(self) -> Datasource:
@@ -250,7 +250,7 @@ def postgres_pyodbc_datasource(
     cache_dir: typing.Optional[pathlib.Path] = None,
     compare_cols: typing.Optional[typing.Set[str]] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
-    sync_cols: typing.Optional[typing.Set[str]] = None,
+    include_cols: typing.Optional[typing.Set[str]] = None,
     max_batch_size: int = 1_000,
     read_only: bool = False,
     autocommit: bool = False,
@@ -268,7 +268,7 @@ def postgres_pyodbc_datasource(
         read_only=read_only,
         pk_cols=custom_pk_cols,
         compare_cols=compare_cols,
-        sync_cols=sync_cols,
+        include_cols=include_cols,
         max_batch_size=max_batch_size,
     )
 
@@ -282,6 +282,7 @@ def read_only_hive_datasource(
     cache_dir: typing.Optional[pathlib.Path] = None,
     compare_cols: typing.Optional[typing.Set[str]] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
+    include_cols: typing.Optional[typing.Set[str]] = None,
     max_batch_size: int = 1_000,
 ) -> Datasource:
     sql_adapter = adapter.HiveSQLAdapter()
@@ -296,6 +297,7 @@ def read_only_hive_datasource(
         max_batch_size=max_batch_size,
         pk_cols=custom_pk_cols,
         compare_cols=compare_cols,
+        include_cols=include_cols,
     )
 
 
@@ -308,6 +310,7 @@ def sql_server_pyodbc_datasource(
     cache_dir: typing.Optional[pathlib.Path] = None,
     compare_cols: typing.Optional[typing.Set[str]] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
+    include_cols: typing.Optional[typing.Set[str]] = None,
     max_batch_size: int = 1_000,
     read_only: bool = False,
     fast_executemany: bool = True,
@@ -329,6 +332,7 @@ def sql_server_pyodbc_datasource(
         read_only=read_only,
         pk_cols=custom_pk_cols,
         compare_cols=compare_cols,
+        include_cols=include_cols,
         max_batch_size=max_batch_size,
     )
 

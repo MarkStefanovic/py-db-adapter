@@ -44,8 +44,8 @@ class DbConnection(abc.ABC):
         table_name: str,
         schema_name: typing.Optional[str] = None,
         pk_cols: typing.Optional[typing.Set[str]] = None,
+        include_cols: typing.Optional[typing.Set[str]] = None,
         cache_dir: typing.Optional[pathlib.Path] = None,
-        sync_cols: typing.Optional[typing.Set[str]] = None,
     ) -> domain.Table:
         raise NotImplementedError
 
