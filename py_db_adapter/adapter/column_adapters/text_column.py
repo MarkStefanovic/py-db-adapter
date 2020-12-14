@@ -3,7 +3,6 @@ import abc
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import column_adapter
 
 __all__ = (
     "TextColumnSqlAdapter",
@@ -11,9 +10,7 @@ __all__ = (
 )
 
 
-class TextColumnSqlAdapter(
-    column_adapter.ColumnSqlAdapter[str], abc.ABC
-):
+class TextColumnSqlAdapter(domain.ColumnSqlAdapter[str], abc.ABC):
     def __init__(
         self,
         *,
