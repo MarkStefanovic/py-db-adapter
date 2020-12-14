@@ -17,7 +17,6 @@ logger = domain.logger.getChild("DbAdapter")
 class DbAdapter(abc.ABC):
     """Intersection of DbConnection and SqlAdapter"""
 
-    # DBADAPTERS MUST IMPLEMENT THESE METHODS
     @property
     @abc.abstractmethod
     def _connection(self) -> db_connection.DbConnection:
@@ -34,7 +33,6 @@ class DbAdapter(abc.ABC):
     ) -> bool:
         raise NotImplementedError
 
-    # PUBLIC INTERFACE
     def add_rows(
         self,
         *,
@@ -198,28 +196,18 @@ class DbAdapter(abc.ABC):
         self,
         *,
         table: domain.Table,
-        compare_cols: typing.Optional[typing.Set[str]],
+        additional_cols: typing.Optional[typing.Set[str]],
     ) -> domain.Rows:
-        if compare_cols:
-            sql = self._sql_adapter.select_keys(
-                schema_name=table.schema_name,
-                table_name=table.table_name,
-                pk_cols=table.pk_cols,
-                change_tracking_cols=compare_cols,
-                include_change_tracking_cols=True,
-            )
-        else:
-            sql = self._sql_adapter.select_keys(
-                schema_name=table.schema_name,
-                table_name=table.table_name,
-                pk_cols=table.pk_cols,
-                change_tracking_cols=set(),
-                include_change_tracking_cols=False,
-            )
+        cols = table.pk_cols | additional_cols if additional_cols else table.pk_cols
+        sql = self._sql_adapter.select_distinct(
+            schema_name=table.schema_name,
+            table_name=table.table_name,
+            columns=cols,
+        )
         result = self._connection.fetch(sql=sql)
         if result is None:
             return domain.Rows(
-                column_names=sorted(table.pk_cols | set(compare_cols)),
+                column_names=sorted(table.pk_cols | set(additional_cols)),
                 rows=[],
             )
         else:
@@ -257,7 +245,6 @@ class DbAdapter(abc.ABC):
             ]
             self._connection.execute(sql=sql, params=ordered_params)
 
-    # DUNDER METHODS
     def __enter__(self) -> DbAdapter:
         self.open()
         return self

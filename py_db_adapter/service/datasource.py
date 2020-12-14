@@ -132,9 +132,9 @@ class Datasource(pydantic.BaseModel):
             if fp.exists():
                 dest_rows = pickle.load(open(file=fp, mode="rb"))
             else:
-                dest_rows = dest_repo.keys(True)
+                dest_rows = dest_repo.keys(self.compare_cols)
         else:
-            dest_rows = dest_repo.keys(True)
+            dest_rows = dest_repo.keys(self.compare_cols)
 
         if dest_rows.is_empty:
             logger.info(
@@ -157,7 +157,7 @@ class Datasource(pydantic.BaseModel):
                 "updated": 0,
             }
         else:
-            src_keys = src_repo.keys(include_change_tracking_cols=True)
+            src_keys = src_repo.keys(self.compare_cols)
             if self.cache_dir:
                 dump_dest_keys(
                     cache_dir=self.cache_dir,
