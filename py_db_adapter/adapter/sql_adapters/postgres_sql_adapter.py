@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import sql_adapter, standard_column_adapters
+from py_db_adapter.adapter import standard_column_adapters
 
 __all__ = (
     "PostgreSQLAdapter",
@@ -457,7 +457,7 @@ POSTGRES_RESERVED_KEYWORDS = {
 }
 
 
-class PostgreSQLAdapter(sql_adapter.SqlAdapter):
+class PostgreSQLAdapter(domain.SqlAdapter):
     def __init__(self) -> None:
         super().__init__(max_float_literal_decimal_places=5)
 

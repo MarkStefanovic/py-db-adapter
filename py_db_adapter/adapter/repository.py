@@ -4,7 +4,6 @@ import typing
 
 from py_db_adapter import domain
 from py_db_adapter.adapter import db_adapter
-from py_db_adapter.domain import exceptions
 
 __all__ = ("Repository",)
 
@@ -33,7 +32,7 @@ class Repository:
 
     def add(self, /, rows: domain.Rows) -> None:
         if self._read_only:
-            raise exceptions.DatabaseIsReadOnly()
+            raise domain.exceptions.DatabaseIsReadOnly()
         else:
             self._db.add_rows(
                 schema_name=self._table.schema_name,
@@ -47,13 +46,13 @@ class Repository:
 
     def create(self) -> bool:
         if self._read_only:
-            raise exceptions.DatabaseIsReadOnly()
+            raise domain.exceptions.DatabaseIsReadOnly()
         else:
             return self._db.create_table(self._table)
 
     def delete(self, /, rows: domain.Rows) -> None:
         if self._read_only:
-            raise exceptions.DatabaseIsReadOnly()
+            raise domain.exceptions.DatabaseIsReadOnly()
         else:
             self._db.delete_rows(
                 table=self._table,
@@ -63,7 +62,7 @@ class Repository:
 
     def drop(self) -> bool:
         if self._read_only:
-            raise exceptions.DatabaseIsReadOnly()
+            raise domain.exceptions.DatabaseIsReadOnly()
         else:
             return self._db.drop_table(
                 table_name=self._table.table_name,
@@ -94,7 +93,7 @@ class Repository:
 
     def truncate(self) -> None:
         if self._read_only:
-            raise exceptions.DatabaseIsReadOnly()
+            raise domain.exceptions.DatabaseIsReadOnly()
         else:
             return self._db.truncate_table(
                 schema_name=self._table.schema_name, table_name=self._table.table_name
@@ -102,7 +101,7 @@ class Repository:
 
     def update(self, /, rows: domain.Rows) -> None:
         if self._read_only:
-            raise exceptions.DatabaseIsReadOnly()
+            raise domain.exceptions.DatabaseIsReadOnly()
         else:
             self._db.update_table(
                 table=self._table, rows=rows, batch_size=self._batch_size
