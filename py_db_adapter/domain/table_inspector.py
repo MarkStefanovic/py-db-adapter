@@ -5,7 +5,7 @@ import pathlib
 import pickle
 import typing
 
-from py_db_adapter.domain import db_connection, logger as domain_logger, table
+from py_db_adapter.domain import logger as domain_logger, table
 
 __all__ = ("TableInspector",)
 
@@ -17,7 +17,6 @@ class TableInspector(abc.ABC):
     def inspect_table(
         self,
         *,
-        db: db_connection,
         schema_name: typing.Optional[str],
         table_name: str,
         custom_pk_cols: typing.Set[str],
@@ -28,7 +27,6 @@ class TableInspector(abc.ABC):
     def inspect_table_and_cache(
         self,
         *,
-        db: db_connection,
         schema_name: typing.Optional[str],
         table_name: str,
         custom_pk_cols: typing.Set[str],
@@ -40,7 +38,6 @@ class TableInspector(abc.ABC):
             tbl = pickle.load(open(file=fp, mode="rb"))
         else:
             tbl = self.inspect_table(
-                db=db,
                 schema_name=schema_name,
                 table_name=table_name,
                 custom_pk_cols=custom_pk_cols,
@@ -48,3 +45,6 @@ class TableInspector(abc.ABC):
             )
             pickle.dump(tbl, open(fp, "wb"))
         return tbl
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}>"
