@@ -22,7 +22,7 @@ logger = domain.logger.getChild("Datasource")
 class Datasource(pydantic.BaseModel):
     cache_dir: typing.Optional[pathlib.Path]
     compare_cols: typing.Optional[typing.Set[str]]
-    db: adapter.DbAdapter
+    db: domain.DbAdapter
     max_batch_size: int
     pk_cols: typing.Optional[typing.Set[str]]
     include_cols: typing.Optional[typing.Set[str]]

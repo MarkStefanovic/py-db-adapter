@@ -3,7 +3,6 @@ from __future__ import annotations
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import db_adapter
 
 __all__ = ("Repository",)
 
@@ -16,7 +15,7 @@ class Repository:
     def __init__(
         self,
         *,
-        db: db_adapter.DbAdapter,
+        db: domain.DbAdapter,
         table: domain.Table,
         change_tracking_columns: typing.Optional[typing.Iterable[str]] = None,
         read_only: bool = False,

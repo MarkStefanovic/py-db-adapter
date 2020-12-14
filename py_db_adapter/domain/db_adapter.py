@@ -5,12 +5,19 @@ import pathlib
 import types
 import typing
 
-from py_db_adapter import domain
+from py_db_adapter.domain import (
+    db_connection,
+    exceptions,
+    logger as domain_logger,
+    table as domain_table,
+    rows as domain_rows,
+    sql_adapter,
+)
 
 __all__ = ("DbAdapter",)
 
 
-logger = domain.logger.getChild("DbAdapter")
+logger = domain_logger.logger.getChild("DbAdapter")
 
 
 class DbAdapter(abc.ABC):
@@ -18,12 +25,12 @@ class DbAdapter(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def _connection(self) -> domain.DbConnection:
+    def _connection(self) -> db_connection.DbConnection:
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def _sql_adapter(self) -> domain.SqlAdapter:
+    def _sql_adapter(self) -> sql_adapter.SqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -37,7 +44,7 @@ class DbAdapter(abc.ABC):
         *,
         schema_name: typing.Optional[str],
         table_name: str,
-        rows: domain.Rows,
+        rows: domain_rows.Rows,
         batch_size: int,
     ) -> None:
         for batch in rows.batches(batch_size):
@@ -56,7 +63,7 @@ class DbAdapter(abc.ABC):
     def commit(self) -> None:
         return self._connection.commit()
 
-    def create_table(self, /, table: domain.Table) -> bool:
+    def create_table(self, /, table: domain_table.Table) -> bool:
         if self.table_exists(
             table_name=table.table_name, schema_name=table.schema_name
         ):
@@ -70,8 +77,8 @@ class DbAdapter(abc.ABC):
     def delete_rows(
         self,
         *,
-        table: domain.Table,
-        rows: domain.Rows,
+        table: domain_table.Table,
+        rows: domain_rows.Rows,
         batch_size: int,
     ) -> None:
         sql = self._sql_adapter.delete(
@@ -100,7 +107,7 @@ class DbAdapter(abc.ABC):
         self, *, table_name: str, schema_name: typing.Optional[str] = None
     ) -> int:
         if schema_name is None:
-            raise domain.exceptions.SchemaIsRequired(
+            raise exceptions.SchemaIsRequired(
                 f"A schema is required for PostgresPyodbcDbAdapter's fast_row_count method"
             )
 
@@ -111,7 +118,7 @@ class DbAdapter(abc.ABC):
             result = con.fetch(sql=sql, params=None)
             assert result is not None
             if result.is_empty:
-                raise domain.exceptions.TableDoesNotExist(
+                raise exceptions.TableDoesNotExist(
                     table_name=table_name, schema_name=schema_name
                 )
 
@@ -124,13 +131,13 @@ class DbAdapter(abc.ABC):
     def fetch_rows_by_primary_key(
         self,
         *,
-        table: domain.Table,
-        rows: domain.Rows,
+        table: domain_table.Table,
+        rows: domain_rows.Rows,
         cols: typing.Optional[typing.Set[str]] = None,
         batch_size: int,
-    ) -> domain.Rows:
+    ) -> domain_rows.Rows:
         pk_cols = {col for col in table.columns if col.column_name in table.pk_cols}
-        batches: typing.List[domain.Rows] = []
+        batches: typing.List[domain_rows.Rows] = []
         for batch in rows.batches(batch_size):
             sql = self._sql_adapter.fetch_rows_by_primary_key_values(
                 schema_name=table.schema_name,
@@ -141,7 +148,7 @@ class DbAdapter(abc.ABC):
             )
             row_batch = self._connection.fetch(sql=sql, params=None)
             batches.append(row_batch)
-        return domain.Rows.concat(batches)
+        return domain_rows.Rows.concat(batches)
 
     def inspect_table(
         self,
@@ -151,7 +158,7 @@ class DbAdapter(abc.ABC):
         pk_cols: typing.Optional[typing.Set[str]] = None,
         include_cols: typing.Optional[typing.Set[str]] = None,
         cache_dir: typing.Optional[pathlib.Path] = None,
-    ) -> domain.Table:
+    ) -> domain_table.Table:
         return self._connection.inspect_table(
             table_name=table_name,
             schema_name=schema_name,
@@ -174,9 +181,9 @@ class DbAdapter(abc.ABC):
     def select_all(
         self,
         *,
-        table: domain.Table,
+        table: domain_table.Table,
         columns: typing.Optional[typing.Set[str]] = None,
-    ) -> domain.Rows:
+    ) -> domain_rows.Rows:
         sql = self._sql_adapter.select_all(
             schema_name=table.schema_name,
             table_name=table.table_name,
@@ -184,7 +191,7 @@ class DbAdapter(abc.ABC):
         )
         result = self._connection.fetch(sql=sql)
         if result is None:
-            return domain.Rows(
+            return domain_rows.Rows(
                 column_names=columns or sorted(table.column_names),
                 rows=[],
             )
@@ -194,9 +201,9 @@ class DbAdapter(abc.ABC):
     def table_keys(
         self,
         *,
-        table: domain.Table,
+        table: domain_table.Table,
         additional_cols: typing.Optional[typing.Set[str]],
-    ) -> domain.Rows:
+    ) -> domain_rows.Rows:
         cols = table.pk_cols | additional_cols if additional_cols else table.pk_cols
         sql = self._sql_adapter.select_distinct(
             schema_name=table.schema_name,
@@ -205,7 +212,7 @@ class DbAdapter(abc.ABC):
         )
         result = self._connection.fetch(sql=sql)
         if result is None:
-            return domain.Rows(
+            return domain_rows.Rows(
                 column_names=sorted(table.pk_cols | set(additional_cols)),
                 rows=[],
             )
@@ -221,8 +228,8 @@ class DbAdapter(abc.ABC):
     def update_table(
         self,
         *,
-        table: domain.Table,
-        rows: domain.Rows,
+        table: domain_table.Table,
+        rows: domain_rows.Rows,
         batch_size: int,
     ) -> None:
         for batch in rows.batches(batch_size):

@@ -1,16 +1,12 @@
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import (
-    db_adapter,
-    db_connections,
-    sql_adapters,
-)
+from py_db_adapter.adapter import db_connections, sql_adapters
 
 __all__ = ("PostgresPyodbcDbAdapter",)
 
 
-class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
+class PostgresPyodbcDbAdapter(domain.DbAdapter):
     def __init__(
         self,
         *,

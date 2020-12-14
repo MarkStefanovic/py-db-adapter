@@ -1,16 +1,12 @@
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import (
-    db_adapter,
-    db_connections,
-    sql_adapters,
-)
+from py_db_adapter.adapter import db_connections, sql_adapters
 
 __all__ = ("SqlServerPyodbcDbAdapter",)
 
 
-class SqlServerPyodbcDbAdapter(db_adapter.DbAdapter):
+class SqlServerPyodbcDbAdapter(domain.DbAdapter):
     def __init__(
         self,
         *,
@@ -36,7 +32,9 @@ class SqlServerPyodbcDbAdapter(db_adapter.DbAdapter):
                 f"A schema is required for PostgresPyodbcDbAdapter's table_exists method"
             )
 
-        sql = self._sql_adapter.table_exists(schema_name=schema_name, table_name=table_name)
+        sql = self._sql_adapter.table_exists(
+            schema_name=schema_name, table_name=table_name
+        )
         result = self._connection.fetch(sql=sql, params=None)
         if result:
             row_ct = result.first_value()
