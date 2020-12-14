@@ -3,6 +3,7 @@ from py_db_adapter.domain.column import *
 from py_db_adapter.domain.column_adapter import *
 from py_db_adapter.domain.column_adapters import *
 from py_db_adapter.domain.data_types import *
+from py_db_adapter.domain.db_adapter import *
 from py_db_adapter.domain.db_connection import *
 from py_db_adapter.domain.logger import *
 from py_db_adapter.domain.row_diff import *

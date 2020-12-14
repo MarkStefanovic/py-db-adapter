@@ -2,16 +2,12 @@ import functools
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import (
-    db_adapter,
-    db_connections,
-    sql_adapters,
-)
+from py_db_adapter.adapter import db_connections, sql_adapters
 
 __all__ = ("HivePyodbcDbAdapter",)
 
 
-class HivePyodbcDbAdapter(db_adapter.DbAdapter):
+class HivePyodbcDbAdapter(domain.DbAdapter):
     def __init__(
         self,
         *,
