@@ -4,7 +4,7 @@ import datetime
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import sql_adapter, standard_column_adapters
+from py_db_adapter.adapter import standard_column_adapters
 
 __all__ = ("SqlServerSQLAdapter",)
 
@@ -196,7 +196,7 @@ RESERVED_KEYWORDS = {
 }
 
 
-class SqlServerSQLAdapter(sql_adapter.SqlAdapter):
+class SqlServerSQLAdapter(domain.SqlAdapter):
     def __init__(self) -> None:
         super().__init__(max_float_literal_decimal_places=5)
 

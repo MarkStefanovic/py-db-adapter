@@ -7,5 +7,6 @@ from py_db_adapter.domain.db_connection import *
 from py_db_adapter.domain.logger import *
 from py_db_adapter.domain.row_diff import *
 from py_db_adapter.domain.rows import *
+from py_db_adapter.domain.sql_adapter import *
 from py_db_adapter.domain.sql_formatter import *
 from py_db_adapter.domain.table import *

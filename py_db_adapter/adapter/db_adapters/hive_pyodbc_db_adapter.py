@@ -5,7 +5,6 @@ from py_db_adapter import domain
 from py_db_adapter.adapter import (
     db_adapter,
     db_connections,
-    sql_adapter,
     sql_adapters,
 )
 
@@ -32,7 +31,7 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
         raise NotImplementedError
 
     @property
-    def _sql_adapter(self) -> sql_adapter.SqlAdapter:
+    def _sql_adapter(self) -> domain.SqlAdapter:
         return self._hive_sql_adapter
 
     def table_exists(

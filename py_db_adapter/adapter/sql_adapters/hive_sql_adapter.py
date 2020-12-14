@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import sql_adapter, standard_column_adapters
+from py_db_adapter.adapter import standard_column_adapters
 
 __all__ = ("HiveSQLAdapter",)
 
@@ -548,7 +548,7 @@ RESERVED_KEYWORDS = (
 )
 
 
-class HiveSQLAdapter(sql_adapter.SqlAdapter):
+class HiveSQLAdapter(domain.SqlAdapter):
     def __init__(self) -> None:
         super().__init__(5)
 

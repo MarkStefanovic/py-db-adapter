@@ -14,7 +14,6 @@ import pydantic
 import pyodbc
 
 from py_db_adapter import domain
-from py_db_adapter.domain import exceptions
 
 __all__ = (
     "pyodbc_inspect_table",
@@ -51,10 +50,10 @@ def pyodbc_inspect_table(
     table_name: str,
     schema_name: typing.Optional[str] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
-    include_cols: typing.Optional[typing.Set[str]] = None
+    include_cols: typing.Optional[typing.Set[str]] = None,
 ) -> domain.Table:
     if not pyodbc_table_exists(con=con, table_name=table_name, schema_name=schema_name):
-        raise exceptions.TableDoesNotExist(
+        raise domain.exceptions.TableDoesNotExist(
             table_name=table_name, schema_name=schema_name
         )
 
@@ -63,7 +62,7 @@ def pyodbc_inspect_table(
     pk_cols = _inspect_pks(con=con, table_name=table_name, schema_name=schema_name)
 
     if not pk_cols and not custom_pk_cols:
-        raise exceptions.MissingPrimaryKey(
+        raise domain.exceptions.MissingPrimaryKey(
             schema_name=schema_name, table_name=table_name
         )
 
@@ -145,7 +144,9 @@ def pyodbc_inspect_table(
         col_names = {col.column_name.lower() for col in domain_cols}
         missing_pk_col_names = {col for col in pk_col_names if col not in col_names}
         if missing_pk_col_names:
-            raise exceptions.InvalidCustomPrimaryKey(sorted(missing_pk_col_names))
+            raise domain.exceptions.InvalidCustomPrimaryKey(
+                sorted(missing_pk_col_names)
+            )
         pk_col_names = custom_pk_cols
 
     return domain.Table(

@@ -9,7 +9,6 @@ import pydantic
 import sqlalchemy as sa
 
 from py_db_adapter import domain
-from py_db_adapter.domain import data_types
 
 __all__ = (
     "Column",
@@ -37,7 +36,7 @@ class Column(pydantic.BaseModel, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def data_type(self) -> data_types.DataType:
+    def data_type(self) -> domain.DataType:
         raise NotImplementedError
 
     @property
