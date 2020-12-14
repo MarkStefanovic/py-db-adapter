@@ -4,7 +4,7 @@ import datetime
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import sql_adapter, column_adapters
+from py_db_adapter.adapter import sql_adapter, standard_column_adapters
 
 __all__ = ("SqlServerSQLAdapter",)
 
@@ -202,57 +202,61 @@ class SqlServerSQLAdapter(sql_adapter.SqlAdapter):
 
     def create_boolean_column(
         self, /, column: domain.BooleanColumn
-    ) -> column_adapters.StandardBooleanColumnSqlAdapter:
-        return column_adapters.StandardBooleanColumnSqlAdapter(
-            column=column, wrapper=self.wrap
+    ) -> standard_column_adapters.StandardBooleanColumnSqlAdapter:
+        return standard_column_adapters.StandardBooleanColumnSqlAdapter(
+            col=column, wrapper=self.wrap
         )
 
     def create_date_column(
         self, /, column: domain.DateColumn
-    ) -> column_adapters.DateColumnSqlAdapter:
-        return column_adapters.StandardDateColumnSqlAdapter(
-            column=column, wrapper=self.wrap
+    ) -> domain.DateColumnSqlAdapter:
+        return standard_column_adapters.StandardDateColumnSqlAdapter(
+            col=column, wrapper=self.wrap
         )
 
     def create_datetime_column(
         self, /, column: domain.DateTimeColumn
-    ) -> column_adapters.DateTimeColumnSqlAdapter:
-        return column_adapters.StandardDateTimeColumnSqlAdapter(
-            column=column, wrapper=self.wrap
+    ) -> domain.DateTimeColumnSqlAdapter:
+        return standard_column_adapters.StandardDateTimeColumnSqlAdapter(
+            col=column, wrapper=self.wrap
         )
 
     def create_decimal_column(
         self, /, column: domain.DecimalColumn
-    ) -> column_adapters.DecimalColumnSqlAdapter:
-        return column_adapters.StandardDecimalColumnSqlAdapter(
-            column=column, wrapper=self.wrap
+    ) -> domain.DecimalColumnSqlAdapter:
+        return standard_column_adapters.StandardDecimalColumnSqlAdapter(
+            col=column, wrapper=self.wrap
         )
 
     def create_float_column(
         self, /, column: domain.FloatColumn
-    ) -> column_adapters.FloatColumnSqlAdapter:
-        return column_adapters.StandardFloatColumnSqlAdapter(
-            column=column,
+    ) -> domain.FloatColumnSqlAdapter:
+        return standard_column_adapters.StandardFloatColumnSqlAdapter(
+            col=column,
             wrapper=self.wrap,
             max_decimal_places=self.max_float_literal_decimal_places,
         )
 
     def create_integer_column(
         self, /, column: domain.IntegerColumn
-    ) -> column_adapters.IntegerColumnSqlAdapter:
-        return column_adapters.StandardIntegerColumnSqlAdapter(
-            column=column, wrapper=self.wrap
+    ) -> domain.IntegerColumnSqlAdapter:
+        return standard_column_adapters.StandardIntegerColumnSqlAdapter(
+            col=column, wrapper=self.wrap
         )
 
     def create_text_column(
         self, /, column: domain.TextColumn
-    ) -> column_adapters.TextColumnSqlAdapter:
-        return column_adapters.StandardTextColumnSqlAdapter(
-            column=column, wrapper=self.wrap
+    ) -> domain.TextColumnSqlAdapter:
+        return standard_column_adapters.StandardTextColumnSqlAdapter(
+            col=column, wrapper=self.wrap
         )
 
-    def fast_row_count(self,  *, schema_name: typing.Optional[str], table_name: str) -> str:
-        full_table_name = self.full_table_name(schema_name=schema_name, table_name=table_name)
+    def fast_row_count(
+        self, *, schema_name: typing.Optional[str], table_name: str
+    ) -> str:
+        full_table_name = self.full_table_name(
+            schema_name=schema_name, table_name=table_name
+        )
         return f"""
             SELECT SUM (row_count)
             FROM sys.dm_db_partition_stats
@@ -282,11 +286,11 @@ class SqlServerSQLAdapter(sql_adapter.SqlAdapter):
             return obj_name
 
 
-class SqlServerDateTimeColumnSqlAdapter(column_adapters.DateTimeColumnSqlAdapter):
+class SqlServerDateTimeColumnSqlAdapter(domain.DateTimeColumnSqlAdapter):
     def __init__(
         self, *, column: domain.DateTimeColumn, wrapper: typing.Callable[[str], str]
     ):
-        super().__init__(column=column, wrapper=wrapper)
+        super().__init__(col=column, wrapper=wrapper)
 
     @property
     def definition(self) -> str:
