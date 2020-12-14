@@ -12,3 +12,4 @@ from py_db_adapter.domain.rows import *
 from py_db_adapter.domain.sql_adapter import *
 from py_db_adapter.domain.sql_formatter import *
 from py_db_adapter.domain.table import *
+from py_db_adapter.domain.table_inspector import *
