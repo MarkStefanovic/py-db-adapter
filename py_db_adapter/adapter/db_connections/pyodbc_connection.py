@@ -6,15 +6,14 @@ import typing
 import pyodbc
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import db_connection, pyodbc_inspector
-from py_db_adapter.domain import exceptions
+from py_db_adapter.adapter import pyodbc_inspector
 
 __all__ = ("PyodbcConnection",)
 
 logger = domain.logger.getChild("PyodbcConnection")
 
 
-class PyodbcConnection(db_connection.DbConnection):
+class PyodbcConnection(domain.DbConnection):
     def __init__(
         self, *, db_name: str, fast_executemany: bool, uri: str, autocommit: bool
     ):
@@ -46,7 +45,7 @@ class PyodbcConnection(db_connection.DbConnection):
     ) -> None:
         std_sql = domain.standardize_sql(sql)
         if self._con is None:
-            raise exceptions.DeveloperError(
+            raise domain.exceptions.DeveloperError(
                 "Attempted to run .execute() outside of a with block."
             )
         logger.debug(f"EXECUTE:\n\t{std_sql}\n\tparams={params}")
@@ -72,7 +71,7 @@ class PyodbcConnection(db_connection.DbConnection):
     ) -> domain.Rows:
         std_sql = domain.standardize_sql(sql)
         if self._con is None:
-            raise exceptions.DeveloperError(
+            raise domain.exceptions.DeveloperError(
                 "Attempted to run .execute() outside of a with block."
             )
 
@@ -101,7 +100,7 @@ class PyodbcConnection(db_connection.DbConnection):
 
     def commit(self) -> None:
         if self._con is None:
-            raise exceptions.DeveloperError(
+            raise domain.exceptions.DeveloperError(
                 "Attempted to run .execute() outside of a with block."
             )
         else:
@@ -150,7 +149,7 @@ class PyodbcConnection(db_connection.DbConnection):
 
     def rollback(self) -> None:
         if self._con is None:
-            raise exceptions.DeveloperError(
+            raise domain.exceptions.DeveloperError(
                 "Attempted to run .execute() outside of a with block."
             )
         else:
