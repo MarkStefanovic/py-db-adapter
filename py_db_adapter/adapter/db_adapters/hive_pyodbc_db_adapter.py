@@ -1,9 +1,9 @@
 import functools
 import typing
 
+from py_db_adapter import domain
 from py_db_adapter.adapter import (
     db_adapter,
-    db_connection,
     db_connections,
     sql_adapter,
     sql_adapters,
@@ -23,7 +23,7 @@ class HivePyodbcDbAdapter(db_adapter.DbAdapter):
         self._hive_sql_adapter = hive_sql_adapter
 
     @property
-    def _connection(self) -> db_connection.DbConnection:
+    def _connection(self) -> domain.DbConnection:
         return self._con
 
     def fast_row_count(

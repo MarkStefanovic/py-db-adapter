@@ -3,7 +3,6 @@ import typing
 from py_db_adapter import domain
 from py_db_adapter.adapter import (
     db_adapter,
-    db_connection,
     db_connections,
     sql_adapters,
 )
@@ -22,7 +21,7 @@ class PostgresPyodbcDbAdapter(db_adapter.DbAdapter):
         self._postgres_sql_adapter = postgres_sql_adapter
 
     @property
-    def _connection(self) -> db_connection.DbConnection:
+    def _connection(self) -> domain.DbConnection:
         return self._con
 
     @property

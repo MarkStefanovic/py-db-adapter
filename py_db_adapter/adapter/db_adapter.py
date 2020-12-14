@@ -6,7 +6,7 @@ import types
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import db_connection, sql_adapter
+from py_db_adapter.adapter import sql_adapter
 
 __all__ = ("DbAdapter",)
 
@@ -19,7 +19,7 @@ class DbAdapter(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def _connection(self) -> db_connection.DbConnection:
+    def _connection(self) -> domain.DbConnection:
         raise NotImplementedError
 
     @property

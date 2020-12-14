@@ -3,7 +3,6 @@ import typing
 from py_db_adapter import domain
 from py_db_adapter.adapter import (
     db_adapter,
-    db_connection,
     db_connections,
     sql_adapters,
 )
@@ -22,7 +21,7 @@ class SqlServerPyodbcDbAdapter(db_adapter.DbAdapter):
         self._sql_server_sql_adapter = sql_server_sql_adapter
 
     @property
-    def _connection(self) -> db_connection.DbConnection:
+    def _connection(self) -> domain.DbConnection:
         return self._con
 
     @property
