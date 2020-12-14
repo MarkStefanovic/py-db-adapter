@@ -83,13 +83,8 @@ class Repository:
             batch_size=self._batch_size,
         )
 
-    def keys(self, /, include_change_tracking_cols: bool = True) -> domain.Rows:
-        if include_change_tracking_cols:
-            return self._db.table_keys(
-                table=self._table, compare_cols=self._change_tracking_columns
-            )
-        else:
-            return self._db.table_keys(table=self._table, compare_cols=None)
+    def keys(self, /, additional_cols: typing.Optional[typing.Set[str]] = None) -> domain.Rows:
+        return self._db.table_keys(table=self._table, additional_cols=additional_cols)
 
     def row_count(self) -> int:
         """Get the number of rows in a table"""

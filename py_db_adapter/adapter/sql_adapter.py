@@ -241,29 +241,18 @@ class SqlAdapter(abc.ABC):
         else:
             return f"SELECT * FROM {full_table_name}"
 
-    def select_keys(
+    def select_distinct(
         self,
         *,
         schema_name: typing.Optional[str],
         table_name: str,
-        pk_cols: typing.Set[str],
-        change_tracking_cols: typing.Set[str],
-        include_change_tracking_cols: bool = True,
+        columns: typing.Set[str],
     ) -> str:
-        pk_cols_csv = ", ".join(self.wrap(col) for col in sorted(pk_cols))
-        if include_change_tracking_cols:
-            change_cols_csv = ",".join(self.wrap(col) for col in change_tracking_cols)
-        else:
-            change_cols_csv = ""
-
-        if change_cols_csv:
-            select_cols_csv = f"{pk_cols_csv}, {change_cols_csv}"
-        else:
-            select_cols_csv = pk_cols_csv
+        col_names_csv = ",".join(self.wrap(col) for col in columns)
         full_table_name = self.full_table_name(
             schema_name=schema_name, table_name=table_name
         )
-        return f"SELECT DISTINCT {select_cols_csv} FROM {full_table_name}"
+        return f"SELECT DISTINCT {col_names_csv} FROM {full_table_name}"
 
     @abc.abstractmethod
     def table_exists(
