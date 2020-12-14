@@ -10,7 +10,7 @@ from py_db_adapter.adapter import pyodbc_inspector
 
 __all__ = ("PyodbcConnection",)
 
-logger = domain.logger.getChild("PyodbcConnection")
+logger = domain.root.getChild("PyodbcConnection")
 
 
 class PyodbcConnection(domain.DbConnection):
