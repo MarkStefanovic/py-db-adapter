@@ -24,8 +24,8 @@ D = typing.TypeVar(
 
 
 class ColumnSqlAdapter(abc.ABC, typing.Generic[D]):
-    def __init__(self, *, column: domain.Column, wrapper: typing.Callable[[str], str]):
-        self._column = column
+    def __init__(self, *, col: domain.Column, wrapper: typing.Callable[[str], str]):
+        self._column = col
         self._wrapper = wrapper
 
     def coalesce(

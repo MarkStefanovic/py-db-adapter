@@ -16,7 +16,7 @@ def test_postgres_decimal_column_sql_adapter_literal() -> None:
         autoincrement=False,
     )
     sql_adapter = adapter.StandardDecimalColumnSqlAdapter(
-        column=column, wrapper=lambda o: f'"{o}"'
+        col=column, wrapper=lambda o: f'"{o}"'
     )
     actual = sql_adapter.literal(decimal.Decimal(1 / 12))
     expected = "0.08"
@@ -32,7 +32,7 @@ def test_postgres_float_column_sql_adapter_literal() -> None:
         autoincrement=False,
     )
     sql_adapter = adapter.StandardFloatColumnSqlAdapter(
-        column=column,
+        col=column,
         wrapper=lambda o: f'"{o}"',
         max_decimal_places=4,
     )

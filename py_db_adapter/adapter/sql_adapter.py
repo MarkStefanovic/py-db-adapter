@@ -2,7 +2,6 @@ import abc
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import column_adapters
 
 __all__ = ("SqlAdapter",)
 
@@ -33,43 +32,43 @@ class SqlAdapter(abc.ABC):
     @abc.abstractmethod
     def create_boolean_column(
         self, /, column: domain.BooleanColumn
-    ) -> column_adapters.BooleanColumnSqlAdapter:
+    ) -> domain.BooleanColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_date_column(
         self, /, column: domain.DateColumn
-    ) -> column_adapters.DateColumnSqlAdapter:
+    ) -> domain.DateColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_datetime_column(
         self, /, column: domain.DateTimeColumn
-    ) -> column_adapters.DateTimeColumnSqlAdapter:
+    ) -> domain.DateTimeColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_decimal_column(
         self, /, column: domain.DecimalColumn
-    ) -> column_adapters.DecimalColumnSqlAdapter:
+    ) -> domain.DecimalColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_float_column(
         self, /, column: domain.FloatColumn
-    ) -> column_adapters.FloatColumnSqlAdapter:
+    ) -> domain.FloatColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_integer_column(
         self, /, column: domain.IntegerColumn
-    ) -> column_adapters.IntegerColumnSqlAdapter:
+    ) -> domain.IntegerColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_text_column(
         self, /, column: domain.TextColumn
-    ) -> column_adapters.TextColumnSqlAdapter:
+    ) -> domain.TextColumnSqlAdapter:
         raise NotImplementedError
 
     def definition(self, /, table: domain.Table) -> str:
