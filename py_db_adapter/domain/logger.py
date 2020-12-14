@@ -1,6 +1,6 @@
 import logging
 
-__all__ = ("logger",)
+__all__ = ("root",)
 
-logger = logging.getLogger("pda")
+root = logging.getLogger("pda")
 

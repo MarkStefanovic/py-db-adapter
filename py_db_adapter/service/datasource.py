@@ -16,7 +16,7 @@ __all__ = (
     "sql_server_pyodbc_datasource",
 )
 
-logger = domain.logger.getChild("Datasource")
+logger = domain.root.getChild("Datasource")
 
 
 class Datasource(pydantic.BaseModel):
@@ -208,8 +208,8 @@ class Datasource(pydantic.BaseModel):
                     "updated": rows_updated,
                 }
 
-    def _create_repo(self, /, table: domain.Table) -> adapter.Repository:
-        return adapter.Repository(
+    def _create_repo(self, /, table: domain.Table) -> domain.Repository:
+        return domain.Repository(
             db=self.db,
             table=table,
             change_tracking_columns=self.compare_cols,
