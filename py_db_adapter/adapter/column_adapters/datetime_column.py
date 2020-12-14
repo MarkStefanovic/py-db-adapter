@@ -4,7 +4,6 @@ import datetime
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import column_adapter
 
 __all__ = (
     "DateTimeColumnSqlAdapter",
@@ -12,9 +11,7 @@ __all__ = (
 )
 
 
-class DateTimeColumnSqlAdapter(
-    column_adapter.ColumnSqlAdapter[datetime.datetime], abc.ABC
-):
+class DateTimeColumnSqlAdapter(domain.ColumnSqlAdapter[datetime.datetime], abc.ABC):
     def __init__(
         self, *, column: domain.DateTimeColumn, wrapper: typing.Callable[[str], str]
     ):

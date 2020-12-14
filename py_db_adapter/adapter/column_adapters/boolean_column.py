@@ -2,15 +2,20 @@ import abc
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import column_adapter
 
-__all__ = ("BooleanColumnSqlAdapter", "StandardBooleanColumnSqlAdapter",)
+__all__ = (
+    "BooleanColumnSqlAdapter",
+    "StandardBooleanColumnSqlAdapter",
+)
 
 
-class BooleanColumnSqlAdapter(
-    column_adapter.ColumnSqlAdapter[bool], abc.ABC
-):
-    def __init__(self, *, column: domain.BooleanColumn, wrapper: typing.Callable[[str], str],):
+class BooleanColumnSqlAdapter(domain.ColumnSqlAdapter[bool], abc.ABC):
+    def __init__(
+        self,
+        *,
+        column: domain.BooleanColumn,
+        wrapper: typing.Callable[[str], str],
+    ):
         super().__init__(column=column, wrapper=wrapper)
 
     @property

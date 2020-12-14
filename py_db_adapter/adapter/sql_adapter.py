@@ -2,7 +2,7 @@ import abc
 import typing
 
 from py_db_adapter import domain
-from py_db_adapter.adapter import column_adapters, column_adapter
+from py_db_adapter.adapter import column_adapters
 
 __all__ = ("SqlAdapter",)
 
@@ -188,7 +188,7 @@ class SqlAdapter(abc.ABC):
 
     def _map_column_to_adapter(
         self, /, col: domain.Column
-    ) -> column_adapter.ColumnSqlAdapter[typing.Any]:
+    ) -> domain.ColumnSqlAdapter[typing.Any]:
         if isinstance(col, domain.BooleanColumn):
             return self.create_boolean_column(col)
         elif isinstance(col, domain.DateColumn):
@@ -212,7 +212,7 @@ class SqlAdapter(abc.ABC):
 
     def primary_key_columns(
         self, /, table: domain.Table
-    ) -> typing.List[column_adapter.ColumnSqlAdapter[typing.Any]]:
+    ) -> typing.List[domain.ColumnSqlAdapter[typing.Any]]:
         return [
             self._map_column_to_adapter(col)
             for col in table.columns
