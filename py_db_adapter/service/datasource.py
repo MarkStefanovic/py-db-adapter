@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import pathlib
 import pickle
 import types
@@ -98,9 +99,6 @@ class Datasource(pydantic.BaseModel):
         self,
         *,
         src: Datasource,
-        add: bool = True,
-        update: bool = True,
-        delete: bool = True,
         recreate: bool = False,
     ) -> typing.Dict[str, int]:
         if self.read_only:
@@ -186,16 +184,16 @@ class Datasource(pydantic.BaseModel):
                     "updated": 0,
                 }
             else:
-                if (rows_added := changes.rows_added.row_count) and add:
+                if rows_added := changes.rows_added.row_count:
                     new_rows = src_repo.fetch_rows_by_primary_key_values(
                         rows=changes.rows_added, cols=src._table.column_names
                     )
                     dest_repo.add(new_rows)
                     logger.info(f"Added {rows_added} rows to [{self.table_name}].")
-                if (rows_deleted := changes.rows_deleted.row_count) and delete:
+                if rows_deleted := changes.rows_deleted.row_count:
                     dest_repo.delete(changes.rows_deleted)
                     logger.info(f"Deleted {rows_deleted} rows to [{self.table_name}].")
-                if (rows_updated := changes.rows_updated.row_count) and update:
+                if rows_updated := changes.rows_updated.row_count:
                     updated_rows = src_repo.fetch_rows_by_primary_key_values(
                         rows=changes.rows_updated, cols=src._table.column_names
                     )
@@ -207,6 +205,90 @@ class Datasource(pydantic.BaseModel):
                     "deleted": rows_deleted,
                     "updated": rows_updated,
                 }
+
+    def update_history_table(
+        self, *, ds: Datasource, recreate: bool = False
+    ) -> typing.Dict[str, int]:
+        ts = datetime.datetime.now()
+
+        hist_table, created = self.copy_table(
+            table=ds._table.as_history_table(), recreate=recreate
+        )
+        hist_repo = ds._create_repo(hist_table)
+        prior_state = hist_repo.where(
+            predicate=domain.SqlPredicate(
+                column_name="valid_to",
+                operator=domain.SqlOperator.EQUALS,
+                value=datetime.datetime(9999, 12, 31),
+            )
+        )
+        live_repo = self._create_repo(self._table)
+        current_state = live_repo.all(self._table.column_names)
+        changes = domain.RowDiff(
+            key_cols=self._table.pk_cols,
+            compare_cols=self._table.column_names,
+            src_rows=prior_state,
+            dest_rows=current_state,
+            ignore_missing_key_cols=False,
+            ignore_extra_key_cols=False,
+        )
+        if (
+            changes.rows_added.is_empty
+            and changes.rows_deleted.is_empty
+            and changes.rows_updated.is_empty
+        ):
+            logger.info(
+                "No changes have occurred on the source, so no row versions were added."
+            )
+            return {"added": 0, "deleted": 0, "updated": 0}
+        else:
+            # fmt: off
+            if rows_added := changes.rows_added.row_count:
+                new_rows = (
+                    changes.rows_added
+                    .add_static_column(column_name="valid_from", value=ts)
+                    .add_static_column(column_name="valid_to", value=datetime.datetime(9999, 12, 31))
+                    .add_static_column(column_name="version", value=1)
+                )
+                hist_repo.add(new_rows)
+                logger.info(f"Added {rows_added} rows to [{hist_table.table_name}].")
+            if rows_deleted := changes.rows_deleted.row_count:
+                soft_deletes = (
+                    hist_repo
+                    .fetch_rows_by_primary_key_values(rows=changes.rows_deleted)
+                    .update(
+                        column_name="valid_to",
+                        transform=lambda _: ts - datetime.timedelta(microseconds=1)
+                    )
+                )
+                hist_repo.update(rows=soft_deletes)
+                logger.info(f"Soft deleted {rows_deleted} rows from [{hist_table.table_name}].")
+            if rows_updated := changes.rows_updated.row_count:
+                new_versions = (
+                    hist_repo
+                    .fetch_rows_by_primary_key_values(rows=changes.rows_deleted)
+                    .update(
+                        column_name="valid_from",
+                        static_value=ts,
+                    )
+                    .update(
+                        column_name="valid_to",
+                        static_value=datetime.datetime(9999, 12, 31)
+                    )
+                    .update(
+                        column_name="version",
+                        transform=lambda v: v + 1,
+                    )
+                )
+                hist_repo.update(new_versions)
+                logger.info(f"Added {rows_updated} new row versions to [{hist_table.table_name}].")
+            self.db.commit()
+            # fmt: on
+            return {
+                "new rows": rows_added,
+                "soft-deletes": rows_deleted,
+                "new row versions": rows_updated,
+            }
 
     def _create_repo(self, /, table: domain.Table) -> domain.Repository:
         return domain.Repository(

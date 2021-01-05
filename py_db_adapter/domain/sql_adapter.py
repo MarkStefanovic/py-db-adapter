@@ -6,6 +6,8 @@ from py_db_adapter.domain import (
     column_adapter as domain_column_adapter,
     column_adapters as domain_column_adapters,
     rows as domain_rows,
+    sql_operator,
+    sql_predicate,
     table as domain_table,
 )
 
@@ -258,6 +260,21 @@ class SqlAdapter(abc.ABC):
             schema_name=schema_name, table_name=table_name
         )
         return f"SELECT DISTINCT {col_names_csv} FROM {full_table_name}"
+
+    def select_where(
+        self, *, table: domain_table.Table, predicate: sql_predicate.SqlPredicate
+    ) -> str:
+        col_names_csv = ",".join(self.wrap(col) for col in table.column_names)
+        full_table_name = self.full_table_name(
+            schema_name=table.schema_name, table_name=table.table_name
+        )
+        col_adapter = self._map_column_to_adapter(table.column(predicate.column_name))
+        if predicate.operator == sql_operator.SqlOperator.EQUALS:
+            pred_sql = f"{self.wrap(predicate.column_name)} = {col_adapter.literal(predicate.value)}"
+        else:
+            # TODO implement other operators, as well as AND and OR
+            raise NotImplementedError
+        return f"SELECT {col_names_csv} FROM {full_table_name} WHERE {pred_sql}"
 
     @abc.abstractmethod
     def table_exists(

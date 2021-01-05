@@ -11,6 +11,8 @@ from py_db_adapter.domain import row_diff
 
 Row = typing.Tuple[typing.Any, ...]
 
+T = typing.TypeVar("T")
+
 
 class Rows:
     def __init__(
@@ -25,6 +27,25 @@ class Rows:
         self._column_indices = {
             col_name: i for i, col_name in enumerate(self._column_names)
         }
+
+    def add_column_from_column(
+        self, *, column_name: str, fn: typing.Callable[[], typing.Any]
+    ) -> Rows:
+        return Rows(
+            column_names=self._column_names + [column_name],
+            rows=[row + fn() for row in self._rows],
+        )
+
+    def add_static_column(
+        self,
+        *,
+        column_name: str,
+        value: typing.Any,
+    ) -> Rows:
+        return Rows(
+            column_names=self._column_names + [column_name],
+            rows=[row + value for row in self._rows],
+        )
 
     def as_dicts(self) -> typing.List[typing.Dict[str, typing.Hashable]]:
         return [dict(sorted(zip(self._column_names, row))) for row in self._rows]
@@ -104,6 +125,30 @@ class Rows:
             for row in self._rows
         ]
         return Rows(column_names=cols, rows=rows)
+
+    def update(
+        self,
+        column_name: str,
+        transform: typing.Callable[[T], T] = None,
+        static_value: typing.Any = None,
+    ) -> Rows:
+        col_ix = self._column_indices[column_name]
+        if transform is None:
+            rows = [
+                tuple(
+                    static_value if ix == col_ix else col for ix, col in enumerate(row)
+                )
+                for row in self._rows
+            ]
+        else:
+            rows = [
+                tuple(
+                    transform(col) if ix == col_ix else col
+                    for ix, col in enumerate(row)
+                )
+                for row in self._rows
+            ]
+        return Rows(column_names=self._column_names, rows=rows)
 
     def __eq__(self, other: typing.Any) -> bool:
         if other.__class__ is self.__class__:

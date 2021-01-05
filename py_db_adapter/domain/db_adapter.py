@@ -9,6 +9,7 @@ from py_db_adapter.domain import (
     db_connection,
     exceptions,
     logger as domain_logger,
+    sql_predicate,
     table as domain_table,
     rows as domain_rows,
     sql_adapter,
@@ -193,6 +194,19 @@ class DbAdapter(abc.ABC):
         if result is None:
             return domain_rows.Rows(
                 column_names=columns or sorted(table.column_names),
+                rows=[],
+            )
+        else:
+            return result
+
+    def select_where(
+        self, *, table: domain_table.Table, predicate: sql_predicate.SqlPredicate
+    ) -> domain_rows.Rows:
+        sql = self._sql_adapter.select_where(table=table, predicate=predicate)
+        result = self._connection.fetch(sql=sql)
+        if result is None:
+            return domain_rows.Rows(
+                column_names=table.column_names or sorted(table.column_names),
                 rows=[],
             )
         else:
