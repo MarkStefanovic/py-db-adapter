@@ -1,3 +1,5 @@
+import datetime
+import itertools
 import pathlib
 
 import pyodbc
@@ -128,3 +130,63 @@ def test_sync_with_default_cols(
         dest.sync(src=src, recreate=False)
         dest.commit()
         check_customer2_table_in_sync(postgres_pyodbc_db_uri)
+
+
+def test_update_history_table(
+    cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str
+) -> None:
+    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
+        with con.cursor() as cur:
+            sql = "SELECT COUNT(*) FROM sales.customer"
+            original_rows = cur.execute(sql).fetchval()
+            assert original_rows > 0
+
+    ds = pda.postgres_pyodbc_datasource(
+        db_name="test_db",
+        db_uri=postgres_pyodbc_db_uri,
+        cache_dir=cache_dir,
+        schema_name="sales",
+        table_name="customer",
+        compare_cols=None,
+        custom_pk_cols=None,
+        max_batch_size=1000,
+        read_only=False,
+    )
+    with ds:
+        ds.update_history_table(recreate=False)
+        ds.commit()
+
+    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
+        with con.cursor() as cur:
+            sql = "SELECT * FROM sales.customer_history"
+            result = cur.execute(sql).fetchall()
+            history = {
+                tuple(zip((col[0] for col in cur.description), row)) for row in result
+            }
+
+    assert len(history) == original_rows
+
+    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
+        with con.cursor() as cur:
+            sql = "UPDATE sales.customer SET customer_last_name = 'Smithers' WHERE customer_first_name = 'Steve'"
+            cur.execute(sql)
+            cur.commit()
+
+    with ds:
+        ds.update_history_table(recreate=False)
+        ds.commit()
+
+    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
+        with con.cursor() as cur:
+            sql = "SELECT * FROM sales.customer_history WHERE customer_first_name = 'Steve'"
+            result = cur.execute(sql).fetchall()
+            updated_rows = [
+                dict(zip((col[0] for col in cur.description), row)) for row in result
+            ]
+    assert len(updated_rows) == 2
+    # fmt: off
+    assert sum(row["valid_to"] == datetime.datetime(9999, 12, 31) for row in updated_rows) == 1
+    original_row = next(row for row in updated_rows if row["valid_to"] != datetime.datetime(9999, 12, 31))
+    new_row = next(row for row in updated_rows if row["valid_to"] == datetime.datetime(9999, 12, 31))
+    assert original_row["valid_to"] + datetime.timedelta(microseconds=1) == new_row["valid_from"]
+    # fmt: on

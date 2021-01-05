@@ -3,3 +3,4 @@ DROP TABLE IF EXISTS hr.employee CASCADE;
 DROP TABLE IF EXISTS sales.employee_customer CASCADE;
 DROP TABLE IF EXISTS sales.customer CASCADE;
 DROP TABLE IF EXISTS sales.customer2 CASCADE;
+DROP TABLE IF EXISTS sales.customer_history CASCADE;

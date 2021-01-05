@@ -37,7 +37,7 @@ def set_up_db(con: pyodbc.Connection, /) -> None:
 
 
 def tear_down_db(con: pyodbc.Connection, /) -> None:
-    fp = pathlib.Path(__file__).parent / "fixtures" / "setup_db.sql"
+    fp = pathlib.Path(__file__).parent / "fixtures" / "tear_down_db.sql"
     run_queries_in_file(con=con, fp=fp)
 
 
@@ -46,11 +46,16 @@ def tear_down_db(con: pyodbc.Connection, /) -> None:
 #     return sa.create_engine(os.environ["SQLALCHEMY_URI"])
 
 
+def clear_cache(cache_dir: pathlib.Path, /) -> None:
+    if cache_dir.exists():
+        for fp in cache_dir.iterdir():
+            if fp.suffix == ".p":
+                fp.unlink()
+
+
 @pytest.fixture(scope="function")
 def postgres_pyodbc_db_uri(cache_dir: pathlib.Path) -> typing.Generator[str, None, None]:
-    if cache_dir.exists():
-        key_cache = cache_dir / "customer2.dest-keys.p"
-        key_cache.unlink(missing_ok=True)
+    clear_cache(cache_dir)
 
     db_uri = os.environ["PYODBC_URI"]
     with pyodbc.connect(db_uri) as con:

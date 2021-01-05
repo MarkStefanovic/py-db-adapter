@@ -126,3 +126,5 @@ CREATE TABLE IF NOT EXISTS sales.customer2 (
 ,   date_updated TIMESTAMP NULL
 );
 ALTER TABLE sales.customer2 OWNER TO postgres;
+
+DROP TABLE IF EXISTS sales.customer_history CASCADE;

@@ -207,14 +207,34 @@ class Datasource(pydantic.BaseModel):
                 }
 
     def update_history_table(
-        self, *, ds: Datasource, recreate: bool = False
+        self,
+        *,
+        compare_cols: typing.Optional[typing.Set[str]] = None,
+        recreate: bool = False,
     ) -> typing.Dict[str, int]:
         ts = datetime.datetime.now()
 
-        hist_table, created = self.copy_table(
-            table=ds._table.as_history_table(), recreate=recreate
+        live_table = self._table
+        hist_table = live_table.as_history_table()
+        ds = self.copy(update={"table_name": hist_table.table_name})
+
+        hist_table_exists = ds.db.table_exists(
+            schema_name=hist_table.schema_name, table_name=hist_table.table_name
         )
+
+        if recreate:
+            logger.debug(f"Recreating {hist_table.table_name}...")
+            if hist_table_exists:
+                ds.db.drop_table(
+                    table_name=hist_table.table_name, schema_name=hist_table.schema_name
+                )
+
+        if not hist_table_exists:
+            logger.debug(f"Creating {hist_table.table_name}...")
+            ds.db.create_table(hist_table)
+
         hist_repo = ds._create_repo(hist_table)
+
         prior_state = hist_repo.where(
             predicate=domain.SqlPredicate(
                 column_name="valid_to",
@@ -222,15 +242,15 @@ class Datasource(pydantic.BaseModel):
                 value=datetime.datetime(9999, 12, 31),
             )
         )
-        live_repo = self._create_repo(self._table)
-        current_state = live_repo.all(self._table.column_names)
+        live_repo = self._create_repo(live_table)
+        current_state = live_repo.all(live_table.column_names)
         changes = domain.RowDiff(
-            key_cols=self._table.pk_cols,
-            compare_cols=self._table.column_names,
-            src_rows=prior_state,
-            dest_rows=current_state,
+            key_cols=live_table.pk_cols,
+            compare_cols=compare_cols or live_table.non_pk_column_names,
+            src_rows=current_state,
+            dest_rows=prior_state,
             ignore_missing_key_cols=False,
-            ignore_extra_key_cols=False,
+            ignore_extra_key_cols=True,
         )
         if (
             changes.rows_added.is_empty
@@ -248,7 +268,6 @@ class Datasource(pydantic.BaseModel):
                     changes.rows_added
                     .add_static_column(column_name="valid_from", value=ts)
                     .add_static_column(column_name="valid_to", value=datetime.datetime(9999, 12, 31))
-                    .add_static_column(column_name="version", value=1)
                 )
                 hist_repo.add(new_rows)
                 logger.info(f"Added {rows_added} rows to [{hist_table.table_name}].")
@@ -264,25 +283,33 @@ class Datasource(pydantic.BaseModel):
                 hist_repo.update(rows=soft_deletes)
                 logger.info(f"Soft deleted {rows_deleted} rows from [{hist_table.table_name}].")
             if rows_updated := changes.rows_updated.row_count:
+                updated_ids = {
+                    frozenset((pk_col, row_dict[pk_col]) for pk_col in live_table.pk_cols)
+                    for row_dict in changes.rows_updated.as_dicts()
+                }
+                old_versions = domain.Rows.from_dicts([
+                    row_dict for row_dict in prior_state.as_dicts()
+                    if frozenset((pk_col, row_dict[pk_col]) for pk_col in live_table.pk_cols) in updated_ids
+                ]).update_column_values(
+                    column_name="valid_to",
+                    static_value=ts - datetime.timedelta(microseconds=1),
+                )
+                hist_repo.update(old_versions)
+
                 new_versions = (
-                    hist_repo
-                    .fetch_rows_by_primary_key_values(rows=changes.rows_deleted)
-                    .update_column_values(
+                    changes.rows_updated
+                    .add_static_column(
                         column_name="valid_from",
-                        static_value=ts,
+                        value=ts,
                     )
-                    .update_column_values(
+                    .add_static_column(
                         column_name="valid_to",
-                        static_value=datetime.datetime(9999, 12, 31)
-                    )
-                    .update_column_values(
-                        column_name="version",
-                        transform=lambda v: v + 1,
+                        value=datetime.datetime(9999, 12, 31)
                     )
                 )
-                hist_repo.update(new_versions)
+                hist_repo.add(new_versions)
                 logger.info(f"Added {rows_updated} new row versions to [{hist_table.table_name}].")
-            self.db.commit()
+            ds.db.commit()
             # fmt: on
             return {
                 "new rows": rows_added,

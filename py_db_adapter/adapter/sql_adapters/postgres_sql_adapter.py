@@ -499,7 +499,7 @@ class PostgreSQLAdapter(domain.SqlAdapter):
     def create_integer_column(
         self, /, column: domain.IntegerColumn
     ) -> domain.IntegerColumnSqlAdapter:
-        return standard_column_adapters.StandardIntegerColumnSqlAdapter(
+        return PostgresIntegerColumnSqlAdapter(
             col=column, wrapper=self.wrap
         )
 
@@ -562,3 +562,23 @@ class PostgresBooleanColumnSqlAdapter(domain.BooleanColumnSqlAdapter):
 
     def literal(self, value: bool) -> str:
         return "TRUE" if value else "FALSE"
+
+
+class PostgresIntegerColumnSqlAdapter(domain.IntegerColumnSqlAdapter):
+    def __init__(
+        self,
+        *,
+        col: domain.IntegerColumn,
+        wrapper: typing.Callable[[str], str],
+    ):
+        super().__init__(col=col, wrapper=wrapper)
+
+    @property
+    def definition(self) -> str:
+        if self.column_metadata.autoincrement:
+            return f"{self.wrapped_column_name} SERIAL"
+        else:
+            return f"{self.wrapped_column_name} BIGINT {self.nullable}"
+
+    def literal(self, value: int) -> str:
+        return str(value)

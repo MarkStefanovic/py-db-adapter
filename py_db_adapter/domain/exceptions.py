@@ -30,6 +30,20 @@ class DeveloperError(PyDbAdapterException):
         super().__init__(message)
 
 
+class ColumnNameNotFound(DataError):
+    def __init__(
+        self, column_name: str, table_name: str, available_cols: typing.Set[str]
+    ):
+        self.column_name = column_name
+        self.table_name = table_name
+        self.available_cols = available_cols
+        msg = (
+            f"Could not find a column named {column_name} for table {table_name}.  Available columns include the "
+            f"following: {', '.join(available_cols)}."
+        )
+        super().__init__(msg)
+
+
 class MissingPrimaryKey(DataError):
     def __init__(self, schema_name: typing.Optional[str], table_name: str) -> None:
         full_table_name = f"{schema_name}.{table_name}" if schema_name else table_name
