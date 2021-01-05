@@ -14,6 +14,9 @@ pydantic = "^1.7.2"
 [tool.poetry.dev-dependencies]
 psycopg2-binary = "^2.8.6"
 pylint = "^2.6.0"
+pytest = "^6.2.1"
+python-dotenv = "^0.15.0"
+mypy = "^0.790"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

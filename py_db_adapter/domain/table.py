@@ -24,6 +24,36 @@ class Table(pydantic.BaseModel):
         columns = self.columns | {col}
         return self.copy(update={"columns": columns})
 
+    def as_history_table(self) -> Table:
+        """Add columns used for row versioning"""
+        valid_from_col = column.DateTimeColumn(
+            schema_name=self.schema_name,
+            table_name=self.table_name,
+            column_name="valid_from",
+            nullable=False,
+            autoincrement=False,
+        )
+        valid_to_col = column.DateTimeColumn(
+            schema_name=self.schema_name,
+            table_name=self.table_name,
+            column_name="valid_to",
+            nullable=False,
+            autoincrement=False,
+        )
+        version_col = column.IntegerColumn(
+            schema_name=self.schema_name,
+            table_name=self.table_name,
+            column_name="version",
+            nullable=False,
+            autoincrement=False,
+        )
+        columns = self.columns | {valid_from_col, valid_to_col, version_col}
+        hist_table_name = f"{self.table_name}_history"
+        return self.copy(update={"table_name": hist_table_name, "columns": columns})
+
+    def column(self, /, column_name: str) -> column.Column:
+        return next(col for col in self.columns if col.column_name == column_name)
+
     @property
     def column_names(self) -> typing.Set[str]:
         return {col.column_name for col in self.columns}

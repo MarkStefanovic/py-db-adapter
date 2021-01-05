@@ -7,7 +7,7 @@ from py_db_adapter.domain import (
     exceptions,
     logger as domain_logger,
     rows as domain_rows,
-    table as domain_table,
+    sql_predicate, table as domain_table,
 )
 
 __all__ = ("Repository",)
@@ -115,3 +115,6 @@ class Repository:
             self._db.update_table(
                 table=self._table, rows=rows, batch_size=self._batch_size
             )
+
+    def where(self, /, predicate: sql_predicate.SqlPredicate) -> domain_rows.Rows:
+        return self._db.select_where(table=self._table, predicate=predicate)

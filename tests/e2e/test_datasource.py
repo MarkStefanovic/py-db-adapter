@@ -71,13 +71,7 @@ def test_sync_with_explicit_cols(
     )
     with src, dest:
         # test add
-        dest.sync(
-            src=src,
-            add=True,
-            update=True,
-            delete=True,
-            recreate=False,
-        )
+        dest.sync(src=src, recreate=False)
         dest.commit()
         check_customer2_table_in_sync(postgres_pyodbc_db_uri)
 
@@ -87,13 +81,7 @@ def test_sync_with_explicit_cols(
                 "UPDATE sales.customer SET customer_first_name = 'Frank' WHERE customer_first_name = 'Dan'"
             )
             cur.commit()
-            dest.sync(
-                src=src,
-                add=True,
-                update=True,
-                delete=True,
-                recreate=False,
-            )
+            dest.sync(src=src, recreate=False)
             dest.commit()
             check_customer2_table_in_sync(postgres_pyodbc_db_uri)
 
@@ -102,13 +90,7 @@ def test_sync_with_explicit_cols(
                 "DELETE FROM sales.customer WHERE customer_first_name = 'Steve'"
             )
             cur.commit()
-            dest.sync(
-                src=src,
-                add=True,
-                update=True,
-                delete=True,
-                recreate=False,
-            )
+            dest.sync(src=src, recreate=False)
             dest.commit()
             check_customer2_table_in_sync(postgres_pyodbc_db_uri)
 
@@ -143,12 +125,6 @@ def test_sync_with_default_cols(
         }
     )
     with src, dest:
-        dest.sync(
-            src=src,
-            add=True,
-            update=True,
-            delete=True,
-            recreate=False,
-        )
+        dest.sync(src=src, recreate=False)
         dest.commit()
         check_customer2_table_in_sync(postgres_pyodbc_db_uri)

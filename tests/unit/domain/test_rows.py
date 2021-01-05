@@ -1,18 +1,12 @@
-import pytest
-
 from py_db_adapter.domain.rows import *
 
 
-@pytest.fixture
-def dummy_rows() -> Rows:
+def test_as_dicts() -> None:
     items = list(zip("abcdefghij", range(10)))
-    return Rows(
+    dummy_rows = Rows(
         column_names=["name", "age"],
         rows=items,
     )
-
-
-def test_as_dicts(dummy_rows: Rows) -> None:
     assert dummy_rows.as_dicts() == [
         {"name": "a", "age": 0},
         {"name": "b", "age": 1},
@@ -25,3 +19,29 @@ def test_as_dicts(dummy_rows: Rows) -> None:
         {"name": "i", "age": 8},
         {"name": "j", "age": 9},
     ]
+
+
+def test_update_with_transform() -> None:
+    dummy_rows = Rows(
+        column_names=["name", "age"],
+        rows=[
+            ("Mark", 99),
+            ("Mandie", 52),
+            ("Steve", 74),
+        ],
+    )
+    updated_rows = dummy_rows.update(column_name="age", transform=lambda age: age + 1)
+    assert updated_rows.as_tuples() == [("Mark", 100), ("Mandie", 53), ("Steve", 75)]
+
+
+def test_update_with_static_value() -> None:
+    dummy_rows = Rows(
+        column_names=["name", "age"],
+        rows=[
+            ("Mark", 99),
+            ("Mandie", 52),
+            ("Steve", 74),
+        ],
+    )
+    updated_rows = dummy_rows.update(column_name="age", static_value=99)
+    assert updated_rows.as_tuples() == [("Mark", 99), ("Mandie", 99), ("Steve", 99)]
