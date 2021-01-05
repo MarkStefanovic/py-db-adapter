@@ -136,7 +136,6 @@ class SqlAdapter(abc.ABC):
         pk_cols: typing.Set[domain_column.Column],
         select_cols: typing.Optional[typing.Set[str]],
     ) -> str:
-        # where_clause = self._where_clause(rows=rows, pk_cols=pk_cols)
         if len(pk_cols) == 1:
             sorted_pk_cols = sorted(pk_cols, key=lambda c: c.column_name)
             pk_col = sorted_pk_cols[0]
@@ -268,11 +267,18 @@ class SqlAdapter(abc.ABC):
         full_table_name = self.full_table_name(
             schema_name=table.schema_name, table_name=table.table_name
         )
-        col_adapter = self._map_column_to_adapter(table.column(predicate.column_name))
-        if predicate.operator == sql_operator.SqlOperator.EQUALS:
-            pred_sql = f"{self.wrap(predicate.column_name)} = {col_adapter.literal(predicate.value)}"
+        col_adapter = self._map_column_to_adapter(
+            table.column_by_name(predicate.column_name)
+        )
+        if predicate.operator in (
+            sql_operator.SqlOperator.EQUALS,
+            sql_operator.SqlOperator.GREATER_THAN,
+            sql_operator.SqlOperator.GREATER_THAN_OR_EQUAL_TO,
+            sql_operator.SqlOperator.LESS_THAN,
+            sql_operator.SqlOperator.LESS_THAN_OR_EQUAL_TO,
+        ):
+            pred_sql = f"{self.wrap(predicate.column_name)} {predicate.operator!s} {col_adapter.literal(predicate.value)}"
         else:
-            # TODO implement other operators, as well as AND and OR
             raise NotImplementedError
         return f"SELECT {col_names_csv} FROM {full_table_name} WHERE {pred_sql}"
 

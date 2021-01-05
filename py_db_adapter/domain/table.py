@@ -4,7 +4,7 @@ import typing
 
 import pydantic
 
-from py_db_adapter.domain import column
+from py_db_adapter.domain import column, exceptions
 
 __all__ = ("Table",)
 
@@ -26,33 +26,36 @@ class Table(pydantic.BaseModel):
 
     def as_history_table(self) -> Table:
         """Add columns used for row versioning"""
+        id_col = column.IntegerColumn(
+            column_name=f"{self.table_name}_history_id",
+            nullable=False,
+            autoincrement=True,
+        )
         valid_from_col = column.DateTimeColumn(
-            schema_name=self.schema_name,
-            table_name=self.table_name,
             column_name="valid_from",
             nullable=False,
             autoincrement=False,
         )
         valid_to_col = column.DateTimeColumn(
-            schema_name=self.schema_name,
-            table_name=self.table_name,
             column_name="valid_to",
             nullable=False,
             autoincrement=False,
         )
-        version_col = column.IntegerColumn(
-            schema_name=self.schema_name,
-            table_name=self.table_name,
-            column_name="version",
-            nullable=False,
-            autoincrement=False,
+        columns = self.columns | {id_col, valid_from_col, valid_to_col}
+        pk_cols = self.pk_cols | {id_col.column_name}
+        return self.copy(
+            update={"pk_cols": pk_cols, "table_name": f"{self.table_name}_history", "columns": columns}
         )
-        columns = self.columns | {valid_from_col, valid_to_col, version_col}
-        hist_table_name = f"{self.table_name}_history"
-        return self.copy(update={"table_name": hist_table_name, "columns": columns})
 
-    def column(self, /, column_name: str) -> column.Column:
-        return next(col for col in self.columns if col.column_name == column_name)
+    def column_by_name(self, /, column_name: str) -> column.Column:
+        try:
+            return next(col for col in self.columns if col.column_name == column_name)
+        except StopIteration:
+            raise exceptions.ColumnNameNotFound(
+                column_name=column_name,
+                table_name=self.table_name,
+                available_cols=self.column_names,
+            )
 
     @property
     def column_names(self) -> typing.Set[str]:
@@ -60,6 +63,10 @@ class Table(pydantic.BaseModel):
 
     def copy_table(self, schema_name: str, table_name: str) -> Table:
         return self.copy(update={"schema_name": schema_name, "table_name": table_name})
+
+    @property
+    def non_pk_column_names(self) -> typing.Set[str]:
+        return self.column_names - self.pk_cols
 
     def __eq__(self, other: typing.Any) -> bool:
         if other.__class__ is self.__class__:

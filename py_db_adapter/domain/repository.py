@@ -7,7 +7,8 @@ from py_db_adapter.domain import (
     exceptions,
     logger as domain_logger,
     rows as domain_rows,
-    sql_predicate, table as domain_table,
+    sql_predicate,
+    table as domain_table,
 )
 
 __all__ = ("Repository",)

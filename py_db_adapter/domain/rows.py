@@ -47,7 +47,7 @@ class Rows:
     ) -> Rows:
         return Rows(
             column_names=self._column_names + [column_name],
-            rows=[row + value for row in self._rows],
+            rows=[row + (value,) for row in self._rows],
         )
 
     def as_dicts(self) -> typing.List[typing.Dict[str, typing.Hashable]]:
@@ -103,9 +103,12 @@ class Rows:
     def from_dicts(
         cls, /, rows: typing.List[typing.Dict[str, typing.Hashable]]
     ) -> Rows:
-        column_names = sorted(rows[0].keys())
-        new_rows = [tuple(v for _, v in sorted(row.items())) for row in rows]
-        return Rows(column_names=column_names, rows=new_rows)
+        if rows:
+            column_names = sorted(rows[0].keys())
+            new_rows = [tuple(v for _, v in sorted(row.items())) for row in rows]
+            return Rows(column_names=column_names, rows=new_rows)
+        else:
+            return Rows(column_names=[], rows=[])
 
     def first_value(self) -> typing.Optional[typing.Any]:
         if self.is_empty:

@@ -90,13 +90,13 @@ class PyodbcConnection(domain.DbConnection):
         else:
             result = self._cur.execute(std_sql, positional_params[0])
 
+        column_names = [description[0] for description in self._cur.description]
         if rows := result.fetchall():
-            column_names = [description[0] for description in self._cur.description]
             return domain.Rows(
                 column_names=column_names, rows=[tuple(row) for row in rows]
             )
         else:
-            return domain.Rows(column_names=[], rows=[])
+            return domain.Rows(column_names=column_names, rows=[])
 
     def commit(self) -> None:
         if self._con is None:

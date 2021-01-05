@@ -2,20 +2,18 @@ import decimal
 
 import pyodbc
 
-from py_db_adapter import domain, adapter
+import py_db_adapter as pda
 
 
 def test_postgres_decimal_column_sql_adapter_literal() -> None:
-    column = domain.DecimalColumn(
-        schema_name="dummy",
-        table_name="dummy_table",
+    column = pda.DecimalColumn(
         column_name="dummy",
         nullable=False,
         precision=18,
         scale=2,
         autoincrement=False,
     )
-    sql_adapter = adapter.StandardDecimalColumnSqlAdapter(
+    sql_adapter = pda.StandardDecimalColumnSqlAdapter(
         col=column, wrapper=lambda o: f'"{o}"'
     )
     actual = sql_adapter.literal(decimal.Decimal(1 / 12))
@@ -24,14 +22,12 @@ def test_postgres_decimal_column_sql_adapter_literal() -> None:
 
 
 def test_postgres_float_column_sql_adapter_literal() -> None:
-    column = domain.FloatColumn(
-        schema_name="dummy",
-        table_name="dummy_table",
+    column = pda.FloatColumn(
         column_name="dummy",
         nullable=False,
         autoincrement=False,
     )
-    sql_adapter = adapter.StandardFloatColumnSqlAdapter(
+    sql_adapter = pda.StandardFloatColumnSqlAdapter(
         col=column,
         wrapper=lambda o: f'"{o}"',
         max_decimal_places=4,
@@ -42,9 +38,9 @@ def test_postgres_float_column_sql_adapter_literal() -> None:
 
 
 def test_create_table_sql(postgres_pyodbc_db_uri: str) -> None:
-    sql_adapter = adapter.PostgreSQLAdapter()
+    sql_adapter = pda.PostgreSQLAdapter()
     with pyodbc.connect(postgres_pyodbc_db_uri) as con:
-        table = adapter.pyodbc_inspect_table(
+        table = pda.pyodbc_inspect_table(
             con=con,
             table_name="employee",
             schema_name="hr",
@@ -61,7 +57,7 @@ def test_create_table_sql(postgres_pyodbc_db_uri: str) -> None:
 
 
 def test_drop_table_sql() -> None:
-    sql_adapter = adapter.PostgreSQLAdapter()
+    sql_adapter = pda.PostgreSQLAdapter()
     assert (
         sql_adapter.drop(schema_name="hr", table_name="employee")
         == "DROP TABLE hr.employee"
@@ -69,7 +65,7 @@ def test_drop_table_sql() -> None:
 
 
 def test_row_count_sql() -> None:
-    sql_adapter = adapter.PostgreSQLAdapter()
+    sql_adapter = pda.PostgreSQLAdapter()
     assert (
         sql_adapter.row_count(schema_name="hr", table_name="employee")
         == "SELECT COUNT(*) AS row_count FROM hr.employee"
@@ -77,8 +73,46 @@ def test_row_count_sql() -> None:
 
 
 def test_truncate_table_sql() -> None:
-    sql_adapter = adapter.PostgreSQLAdapter()
+    sql_adapter = pda.PostgreSQLAdapter()
     assert (
         sql_adapter.truncate(schema_name="hr", table_name="employee")
         == "TRUNCATE TABLE hr.employee"
     )
+
+
+def test_select_where_method() -> None:
+    schema_name = "dbo"
+    table_name = "test"
+    tbl = pda.Table(
+        schema_name=schema_name,
+        table_name=table_name,
+        columns={
+            pda.IntegerColumn(
+                column_name="test_id",
+                nullable=False,
+                autoincrement=True,
+            ),
+            pda.TextColumn(
+                column_name="test_name",
+                nullable=False,
+                max_length=100,
+            ),
+            pda.DateTimeColumn(
+                column_name="last_run",
+                nullable=False,
+            ),
+        },
+        pk_cols={"test_id"},
+    )
+    sql_adapter = pda.PostgreSQLAdapter()
+    sql = sql_adapter.select_where(
+        table=tbl,
+        predicate=pda.SqlPredicate(
+            column_name="test_name",
+            operator=pda.SqlOperator.EQUALS,
+            value="test_id",
+        ),
+    )
+    # fmt: off
+    assert sql == "SELECT last_run,test_name,test_id FROM dbo.test WHERE test_name = 'test_id'"
+    # fmt: on

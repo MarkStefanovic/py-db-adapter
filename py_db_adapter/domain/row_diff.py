@@ -92,7 +92,7 @@ def compare_rows(
             )
         if key_cols - dest_key_cols:
             raise exceptions.MissingKeyColumns(
-                actual_key_cols=src_key_cols, expected_key_cols=key_cols
+                actual_key_cols=dest_key_cols, expected_key_cols=key_cols
             )
 
     if not ignore_extra_key_cols:
@@ -102,7 +102,7 @@ def compare_rows(
             )
         if dest_key_cols - key_cols:
             raise exceptions.ExtraKeyColumns(
-                actual_key_cols=src_key_cols, expected_key_cols=key_cols
+                actual_key_cols=dest_key_cols, expected_key_cols=key_cols
             )
 
     src_lkp_tbl = rows_to_lookup_table(

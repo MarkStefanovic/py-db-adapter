@@ -23,8 +23,6 @@ __all__ = (
 
 
 class Column(pydantic.BaseModel, abc.ABC):
-    schema_name: typing.Optional[str]
-    table_name: str
     column_name: str
     nullable: bool
     autoincrement: bool
@@ -60,15 +58,11 @@ class Column(pydantic.BaseModel, abc.ABC):
         if other.__class__ is self.__class__:
             other = typing.cast(Column, other)
             return (
-                self.schema_name,
-                self.table_name,
                 self.column_name,
                 self.nullable,
                 self.autoincrement,
                 self.data_type,
             ) == (
-                other.schema_name,
-                other.table_name,
                 other.column_name,
                 other.nullable,
                 other.autoincrement,
@@ -81,8 +75,6 @@ class Column(pydantic.BaseModel, abc.ABC):
     def __hash__(self) -> int:
         return hash(
             (
-                self.schema_name,
-                self.table_name,
                 self.column_name,
                 self.nullable,
                 self.autoincrement,
