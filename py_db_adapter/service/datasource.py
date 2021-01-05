@@ -272,13 +272,16 @@ class Datasource(pydantic.BaseModel):
                 hist_repo.add(new_rows)
                 logger.info(f"Added {rows_added} rows to [{hist_table.table_name}].")
             if rows_deleted := changes.rows_deleted.row_count:
+                deleted_ids = {
+                    frozenset((pk_col, row_dict[pk_col]) for pk_col in live_table.pk_cols)
+                    for row_dict in changes.rows_deleted.as_dicts()
+                }
                 soft_deletes = (
-                    hist_repo
-                    .fetch_rows_by_primary_key_values(rows=changes.rows_deleted)
-                    .update_column_values(
-                        column_name="valid_to",
-                        transform=lambda _: ts - datetime.timedelta(microseconds=1)
-                    )
+                    domain.Rows.from_dicts([
+                        row_dict for row_dict in prior_state.as_dicts()
+                        if frozenset((pk_col, row_dict[pk_col]) for pk_col in live_table.pk_cols) in deleted_ids
+                    ])
+                    .update_column_values(column_name="valid_to", static_value=ts)
                 )
                 hist_repo.update(rows=soft_deletes)
                 logger.info(f"Soft deleted {rows_deleted} rows from [{hist_table.table_name}].")
