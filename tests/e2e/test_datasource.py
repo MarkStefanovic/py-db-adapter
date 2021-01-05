@@ -170,11 +170,7 @@ def test_update_history_table(
 def test_update_history_after_source_rows_updated(
     cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str
 ) -> None:
-    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
-        with con.cursor() as cur:
-            sql = "UPDATE sales.customer SET customer_last_name = 'Smithers' WHERE customer_first_name = 'Steve'"
-            cur.execute(sql)
-            cur.commit()
+    # fmt: off
     ds = pda.postgres_pyodbc_datasource(
         db_name="test_db",
         db_uri=postgres_pyodbc_db_uri,
@@ -190,6 +186,16 @@ def test_update_history_after_source_rows_updated(
         ds.update_history_table(recreate=False)
         ds.commit()
 
+    # 1st update
+    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
+        with con.cursor() as cur:
+            sql = "UPDATE sales.customer SET customer_last_name = 'Smithers' WHERE customer_first_name = 'Steve'"
+            cur.execute(sql)
+            cur.commit()
+    with ds:
+        ds.update_history_table(recreate=False)
+        ds.commit()
+
     with pyodbc.connect(postgres_pyodbc_db_uri) as con:
         with con.cursor() as cur:
             sql = "SELECT * FROM sales.customer_history WHERE customer_first_name = 'Steve'"
@@ -197,12 +203,34 @@ def test_update_history_after_source_rows_updated(
             updated_rows = [
                 dict(zip((col[0] for col in cur.description), row)) for row in result
             ]
-    assert len(updated_rows) == 2
-    # fmt: off
+    assert len(updated_rows) == 2, "failed after 1st update"
     assert sum(row["valid_to"] == datetime.datetime(9999, 12, 31) for row in updated_rows) == 1
     original_row = next(row for row in updated_rows if row["valid_to"] != datetime.datetime(9999, 12, 31))
     new_row = next(row for row in updated_rows if row["valid_to"] == datetime.datetime(9999, 12, 31))
     assert original_row["valid_to"] + datetime.timedelta(microseconds=1) == new_row["valid_from"]
+
+    # 2nd update
+    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
+        with con.cursor() as cur:
+            sql = "UPDATE sales.customer SET customer_last_name = 'Smalls' WHERE customer_first_name = 'Steve'"
+            cur.execute(sql)
+            cur.commit()
+
+    with ds:
+        ds.update_history_table(recreate=False)
+        ds.commit()
+
+    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
+        with con.cursor() as cur:
+            sql = "SELECT * FROM sales.customer_history WHERE customer_first_name = 'Steve'"
+            result = cur.execute(sql).fetchall()
+            updated_rows = [
+                dict(zip((col[0] for col in cur.description), row)) for row in result
+            ]
+    assert len(updated_rows) == 3
+    assert sum(row["valid_to"] == datetime.datetime(9999, 12, 31) for row in updated_rows) == 1
+    new_row = next(row for row in updated_rows if row["valid_to"] == datetime.datetime(9999, 12, 31))
+    assert new_row["customer_last_name"] == "Smalls"
     # fmt: on
 
 
