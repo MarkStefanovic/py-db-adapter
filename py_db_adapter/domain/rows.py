@@ -11,8 +11,6 @@ from py_db_adapter.domain import row_diff
 
 Row = typing.Tuple[typing.Any, ...]
 
-T = typing.TypeVar("T")
-
 
 class Rows:
     def __init__(
@@ -28,12 +26,17 @@ class Rows:
             col_name: i for i, col_name in enumerate(self._column_names)
         }
 
-    def add_column_from_column(
-        self, *, column_name: str, fn: typing.Callable[[], typing.Any]
+    def add_column_from_callable(
+        self,
+        *,
+        column_name: str,
+        fn: typing.Callable[[typing.Dict[str, typing.Any]], typing.Any],
     ) -> Rows:
         return Rows(
             column_names=self._column_names + [column_name],
-            rows=[row + fn() for row in self._rows],
+            rows=[
+                tuple(row_dict.values()) + fn(row_dict) for row_dict in self.as_dicts()
+            ],
         )
 
     def add_static_column(
@@ -126,29 +129,29 @@ class Rows:
         ]
         return Rows(column_names=cols, rows=rows)
 
-    def update(
+    def update_column_values(
         self,
         column_name: str,
-        transform: typing.Callable[[T], T] = None,
+        transform: typing.Callable[[typing.Dict[str, typing.Any]], typing.Any] = None,
         static_value: typing.Any = None,
     ) -> Rows:
-        col_ix = self._column_indices[column_name]
         if transform is None:
             rows = [
-                tuple(
-                    static_value if ix == col_ix else col for ix, col in enumerate(row)
-                )
-                for row in self._rows
+                {
+                    key: static_value if column_name == key else val
+                    for ix, (key, val) in enumerate(row_dict.items())
+                }
+                for row_dict in self.as_dicts()
             ]
         else:
             rows = [
-                tuple(
-                    transform(col) if ix == col_ix else col
-                    for ix, col in enumerate(row)
-                )
-                for row in self._rows
+                {
+                    key: transform(row_dict) if column_name == key else val
+                    for ix, (key, val) in enumerate(row_dict.items())
+                }
+                for row_dict in self.as_dicts()
             ]
-        return Rows(column_names=self._column_names, rows=rows)
+        return Rows.from_dicts(rows)
 
     def __eq__(self, other: typing.Any) -> bool:
         if other.__class__ is self.__class__:

@@ -92,6 +92,8 @@ class Column(pydantic.BaseModel, abc.ABC):
 
 
 class BooleanColumn(Column):
+    autoincrement = False
+
     @property
     def python_data_type(self) -> typing.Type[bool]:
         return bool
@@ -106,6 +108,8 @@ class BooleanColumn(Column):
 
 
 class DateColumn(Column):
+    autoincrement = False
+
     @property
     def python_data_type(self) -> typing.Type[datetime.date]:
         return datetime.date
@@ -120,6 +124,8 @@ class DateColumn(Column):
 
 
 class DateTimeColumn(Column):
+    autoincrement = False
+
     @property
     def python_data_type(self) -> typing.Type[datetime.datetime]:
         return datetime.datetime
@@ -134,6 +140,7 @@ class DateTimeColumn(Column):
 
 
 class DecimalColumn(Column):
+    autoincrement = False
     precision: int
     scale: int
 
@@ -151,6 +158,8 @@ class DecimalColumn(Column):
 
 
 class FloatColumn(Column):
+    autoincrement = False
+
     @property
     def data_type(self) -> typing.Literal[domain.DataType.Float]:
         return domain.DataType.Float
@@ -179,6 +188,7 @@ class IntegerColumn(Column):
 
 
 class TextColumn(Column):
+    autoincrement = False
     max_length: typing.Optional[int]
 
     @property

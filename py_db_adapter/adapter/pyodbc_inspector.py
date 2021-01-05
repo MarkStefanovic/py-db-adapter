@@ -57,20 +57,14 @@ def pyodbc_inspect_table(
             table_name=table_name, schema_name=schema_name
         )
 
-    domain_cols = []
-    pyodbc_cols = _inspect_cols(con=con, table_name=table_name, schema_name=schema_name)
-    pk_cols = _inspect_pks(con=con, table_name=table_name, schema_name=schema_name)
-
-    if not pk_cols and not custom_pk_cols:
-        raise domain.exceptions.MissingPrimaryKey(
-            schema_name=schema_name, table_name=table_name
-        )
-
-    pk_col_names = {col.column_name.lower() for col in pk_cols}
-
     if include_cols:
         include_cols = {col.lower() for col in include_cols}
 
+    if custom_pk_cols:
+        custom_pk_cols = {col.lower() for col in custom_pk_cols}
+
+    pyodbc_cols = _inspect_cols(con=con, table_name=table_name, schema_name=schema_name)
+    domain_cols = []
     for col in pyodbc_cols:
         column_name = col.column_name.lower()
         if include_cols is None or column_name in include_cols:
@@ -80,7 +74,6 @@ def pyodbc_inspect_table(
                     table_name=table_name,
                     column_name=column_name,
                     nullable=col.nullable_flag,
-                    autoincrement=False,
                 )
             elif col.domain_data_type == domain.DataType.Date:
                 domain_col = domain.DateColumn(
@@ -88,7 +81,6 @@ def pyodbc_inspect_table(
                     table_name=table_name,
                     column_name=column_name,
                     nullable=col.nullable_flag,
-                    autoincrement=False,
                 )
             elif col.domain_data_type == domain.DataType.DateTime:
                 domain_col = domain.DateTimeColumn(
@@ -96,7 +88,6 @@ def pyodbc_inspect_table(
                     table_name=table_name,
                     column_name=column_name,
                     nullable=col.nullable_flag,
-                    autoincrement=False,
                 )
             elif col.domain_data_type == domain.DataType.Decimal:
                 domain_col = domain.DecimalColumn(
@@ -106,7 +97,6 @@ def pyodbc_inspect_table(
                     nullable=col.nullable_flag,
                     precision=col.precision or 18,
                     scale=col.scale or 2,
-                    autoincrement=False,
                 )
             elif col.domain_data_type == domain.DataType.Float:
                 domain_col = domain.FloatColumn(
@@ -114,7 +104,6 @@ def pyodbc_inspect_table(
                     table_name=table_name,
                     column_name=column_name,
                     nullable=col.nullable_flag,
-                    autoincrement=False,
                 )
             elif col.domain_data_type == domain.DataType.Int:
                 domain_col = domain.IntegerColumn(
@@ -131,7 +120,6 @@ def pyodbc_inspect_table(
                     column_name=column_name,
                     nullable=col.nullable_flag,
                     max_length=col.length,
-                    autoincrement=False,
                 )
             else:
                 raise ValueError(
@@ -140,6 +128,7 @@ def pyodbc_inspect_table(
 
             domain_cols.append(domain_col)
 
+    pk_col_names = _inspect_pks(con=con, table_name=table_name, schema_name=schema_name)
     if custom_pk_cols:
         col_names = {col.column_name.lower() for col in domain_cols}
         missing_pk_col_names = {col for col in pk_col_names if col not in col_names}
@@ -148,6 +137,9 @@ def pyodbc_inspect_table(
                 sorted(missing_pk_col_names)
             )
         pk_col_names = custom_pk_cols
+    else:
+        if not pk_col_names:
+            raise domain.exceptions.MissingPrimaryKey(schema_name=schema_name, table_name=table_name)
 
     return domain.Table(
         schema_name=schema_name,
@@ -159,31 +151,15 @@ def pyodbc_inspect_table(
 
 class PyodbcColumn(pydantic.BaseModel):
     auto_increment: int
-    base_typeid: typing.Optional[int]
-    char_octet_length: typing.Optional[int]
-    column_def: typing.Optional[str]
     column_name: str
     data_type: int
-    display_size: int
     field_type: int
     is_nullable: typing.Optional[int]
     length: typing.Optional[int]
     nullable: int
-    ordinal_position: int
-    physical_number: typing.Optional[int]
     precision: typing.Optional[int]
-    radix: typing.Optional[int]
-    remarks: str
     scale: typing.Optional[int]
-    sql_data_type: int
-    sql_datetime_sub: typing.Optional[int]
-    table_info: typing.Optional[int]
-    table_oid: typing.Optional[int]
-    table_name: str
-    table_owner: str
-    table_qualifier: str
     type_name: str
-    typmod: typing.Optional[int]
 
     @property
     def domain_data_type(self) -> domain.DataType:
@@ -240,59 +216,6 @@ class PyodbcColumn(pydantic.BaseModel):
                 f"nullable should have been 0 or 1, but got {self.nullable!r}."
             )
 
-    @property
-    def db_name(self) -> str:
-        return self.table_qualifier
-
-    @property
-    def schema_name(self) -> str:
-        return self.table_owner
-
-    def __repr__(self) -> str:
-        return repr(self.dict())
-
-
-class PyodbcDataInfo(pydantic.BaseModel):
-    type_name: str
-    data_type: int
-    precision: str
-    literal_prefix: typing.Optional[str]
-    literal_suffix: typing.Optional[str]
-    create_params: typing.Optional[str]  # eg 'precision, scale' for the numeric type
-    nullable: int
-    case_sensitive: int
-    searchable: int
-    unsigned_attribute: typing.Optional[int]
-    money: int
-    auto_increment: typing.Optional[int]  # aka, auto_unique_value
-    local_type_name: typing.Optional[str]
-    minimum_scale: typing.Optional[int]
-    maximum_scale: typing.Optional[int]
-    sql_data_type: int
-    sql_datetime_sub: typing.Optional[str]
-    num_prec_radix: typing.Optional[int]
-    interval_precision: int
-
-    def __repr__(self) -> str:
-        return repr(self.dict())
-
-
-class PyodbcPrimaryKeys(pydantic.BaseModel):
-    column_name: str
-    key_seq: int
-    pk_name: str
-    table_name: str
-    table_owner: str
-    table_qualifier: str
-
-    @property
-    def db_name(self) -> str:
-        return self.table_qualifier
-
-    @property
-    def schema_name(self) -> str:
-        return self.table_owner
-
     def __repr__(self) -> str:
         return repr(self.dict())
 
@@ -317,49 +240,18 @@ def _inspect_cols(
                 return False
 
     with con.cursor() as cur:
-        # Hortonworks Hive ODBC Driver:
-        #    doesn't include the following attributes:
-        #       auto_increment
-        #       base_typeid
-        #       length
-        #       physical number
-        #       precision
-        #       scale
-        #       table info
-        #       table oid
-        #       typmod
-        #    uses the following attribute names:
-        #       column_size instead of display_size
-        #       user_data_type instead of field_type
-        #       num_prec_radix instead of radix
         return [
             PyodbcColumn(
                 auto_increment=get_autoincrement(col),
-                base_typeid=get_base_type_id(col),
-                char_octet_length=col.char_octet_length,
-                column_def=col.column_def,
                 column_name=col.column_name,
                 data_type=col.data_type,
-                display_size=get_display_size(col),
                 field_type=get_field_type(col),
                 is_nullable=handle_is_nullable(col.is_nullable),
                 length=get_length(col),
                 nullable=col.nullable,
-                ordinal_position=col.ordinal_position,
-                physical_number=get_physical_number(col),
                 precision=get_precision(col),
-                radix=get_radix(col),
-                remarks=get_remarks(col),
                 scale=get_scale(col),
-                sql_data_type=col.sql_data_type,
-                sql_datetime_sub=col.sql_datetime_sub,
-                table_info=get_table_info(col),
-                table_oid=get_table_oid(col),
-                table_name=col.table_name,
-                table_owner=get_table_schema(col),
-                table_qualifier=get_db_name(col),
                 type_name=col.type_name,
-                typmod=get_typemod(col),
             )
             for col in cur.columns(table_name, schema=schema_name)
         ]
@@ -369,25 +261,6 @@ def get_autoincrement(row: pyodbc.Row, /) -> int:
     if hasattr(row, "auto_increment"):
         return row.auto_increment
     return 0
-
-
-def get_base_type_id(row: pyodbc.Row, /) -> typing.Optional[int]:
-    if hasattr(row, "base typeid"):
-        return getattr(row, "base typeid")
-    return None
-
-
-def get_db_name(row: pyodbc.Row, /) -> str:
-    if hasattr(row, "table_qualifier"):
-        return row.table_qualifier
-    else:
-        return row.table_cat
-
-
-def get_display_size(row: pyodbc.Row, /) -> int:
-    if hasattr(row, "display_size"):
-        return row.display_size
-    return row.column_size
 
 
 def get_field_type(row: pyodbc.Row, /) -> int:
@@ -405,29 +278,10 @@ def get_length(row: pyodbc.Row, /) -> typing.Optional[int]:
     return None
 
 
-def get_physical_number(row: pyodbc.Row, /) -> typing.Optional[int]:
-    if hasattr(row, "physical number"):
-        return getattr(row, "physical number")
-    return None
-
-
 def get_precision(row: pyodbc.Row, /) -> typing.Optional[int]:
     if hasattr(row, "precision"):
         return row.precision
     return None
-
-
-def get_radix(row: pyodbc.Row, /) -> typing.Optional[int]:
-    if hasattr(row, "radix"):
-        return row.radix
-    return row.num_prec_radix
-
-
-def get_remarks(row: pyodbc.Row, /) -> str:
-    # remarks may be None on SQL Server
-    if hasattr(row, "remarks"):
-        return row.remarks or ""
-    return ""
 
 
 def get_scale(row: pyodbc.Row, /) -> typing.Optional[int]:
@@ -436,46 +290,11 @@ def get_scale(row: pyodbc.Row, /) -> typing.Optional[int]:
     return None
 
 
-def get_table_info(row: pyodbc.Row, /) -> typing.Optional[str]:
-    if hasattr(row, "table info"):
-        return getattr(row, "table info")
-    return None
-
-
-def get_table_oid(row: pyodbc.Row, /) -> typing.Optional[int]:
-    if hasattr(row, "table oid"):
-        return getattr(row, "table oid")
-    return None
-
-
-def get_table_schema(row: pyodbc.Row, /) -> str:
-    if hasattr(row, "table_owner"):
-        return row.table_owner
-    else:
-        return row.table_schem
-
-
-def get_typemod(row: pyodbc.Row, /) -> typing.Optional[int]:
-    if hasattr(row, "typmod"):
-        return row.typmod
-    return None
-
-
 def _inspect_pks(
     con: pyodbc.Connection, table_name: str, schema_name: typing.Optional[str]
-) -> typing.List[PyodbcPrimaryKeys]:
+) -> typing.Set[str]:
     with con.cursor() as cur:
-        return [
-            PyodbcPrimaryKeys(
-                column_name=col.column_name,
-                key_seq=col.key_seq,
-                pk_name=col.pk_name,
-                table_name=col.table_name,
-                table_owner=get_table_schema(col),
-                table_qualifier=get_db_name(col),
-            )
-            for col in cur.primaryKeys(table_name, schema=schema_name)
-        ]
+        return {col.column_name for col in cur.primaryKeys(table_name, schema=schema_name)}
 
 
 def pyodbc_table_exists(

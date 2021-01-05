@@ -256,7 +256,7 @@ class Datasource(pydantic.BaseModel):
                 soft_deletes = (
                     hist_repo
                     .fetch_rows_by_primary_key_values(rows=changes.rows_deleted)
-                    .update(
+                    .update_column_values(
                         column_name="valid_to",
                         transform=lambda _: ts - datetime.timedelta(microseconds=1)
                     )
@@ -267,15 +267,15 @@ class Datasource(pydantic.BaseModel):
                 new_versions = (
                     hist_repo
                     .fetch_rows_by_primary_key_values(rows=changes.rows_deleted)
-                    .update(
+                    .update_column_values(
                         column_name="valid_from",
                         static_value=ts,
                     )
-                    .update(
+                    .update_column_values(
                         column_name="valid_to",
                         static_value=datetime.datetime(9999, 12, 31)
                     )
-                    .update(
+                    .update_column_values(
                         column_name="version",
                         transform=lambda v: v + 1,
                     )
