@@ -23,14 +23,14 @@ def test_as_dicts() -> None:
 
 def test_update_with_transform() -> None:
     dummy_rows = Rows(
-        column_names=["name", "age"],
+        column_names=["age", "name"],
         rows=[
-            ("Mark", 99),
-            ("Mandie", 52),
-            ("Steve", 74),
+            (100, "Mark"),
+            (52, "Mandie"),
+            (74, "Steve"),
         ],
     )
-    updated_rows = dummy_rows.update(column_name="age", transform=lambda age: age + 1)
+    updated_rows = dummy_rows.update_column_values(column_name="age", transform=lambda row: row["age"] + 1)
     assert updated_rows.as_tuples() == [("Mark", 100), ("Mandie", 53), ("Steve", 75)]
 
 
@@ -43,5 +43,5 @@ def test_update_with_static_value() -> None:
             ("Steve", 74),
         ],
     )
-    updated_rows = dummy_rows.update(column_name="age", static_value=99)
+    updated_rows = dummy_rows.update_column_values(column_name="age", static_value=99)
     assert updated_rows.as_tuples() == [("Mark", 99), ("Mandie", 99), ("Steve", 99)]
