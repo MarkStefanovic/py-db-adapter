@@ -25,13 +25,13 @@ def test_update_with_transform() -> None:
     dummy_rows = Rows(
         column_names=["age", "name"],
         rows=[
-            (100, "Mark"),
+            (99, "Mark"),
             (52, "Mandie"),
             (74, "Steve"),
         ],
     )
     updated_rows = dummy_rows.update_column_values(column_name="age", transform=lambda row: row["age"] + 1)
-    assert updated_rows.as_tuples() == [("Mark", 100), ("Mandie", 53), ("Steve", 75)]
+    assert updated_rows.as_tuples() == [(100, "Mark"), (53, "Mandie"), (75, "Steve")]
 
 
 def test_update_with_static_value() -> None:
@@ -44,4 +44,4 @@ def test_update_with_static_value() -> None:
         ],
     )
     updated_rows = dummy_rows.update_column_values(column_name="age", static_value=99)
-    assert updated_rows.as_tuples() == [("Mark", 99), ("Mandie", 99), ("Steve", 99)]
+    assert updated_rows.as_tuples() == [(99, "Mark"), (99, "Mandie"), (99, "Steve")]
