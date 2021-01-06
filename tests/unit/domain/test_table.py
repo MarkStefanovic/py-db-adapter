@@ -1,3 +1,4 @@
+import pydantic
 import pytest
 
 import py_db_adapter as pda
@@ -35,14 +36,45 @@ def dummy_table() -> pda.Table:
 def test_to_history_table(dummy_table: pda.Table) -> None:
     history_table = dummy_table.as_history_table()
     assert history_table.column_names == {
+        "last_run",
+        "test_history_id",
+        "test_id",
+        "test_name",
         "valid_from",
         "valid_to",
-        "test_id",
-        "last_run",
-        "version",
-        "test_name",
     }
 
 
 def test_non_pk_column_names_method(dummy_table: pda.Table) -> None:
     assert dummy_table.non_pk_column_names == {"test_name", "last_run"}
+
+
+def test_table_rejects_empty_pk_cols() -> None:
+    with pytest.raises(pydantic.ValidationError):
+        pda.Table(
+            schema_name="test_schema",
+            table_name="test_table",
+            columns={
+                pda.TextColumn(
+                    column_name="first_name",
+                    nullable=False,
+                    max_length=100,
+                ),
+                pda.TextColumn(
+                    column_name="last_name",
+                    nullable=False,
+                    max_length=100,
+                ),
+            },
+            pk_cols=set(),
+        )
+
+
+def test_table_rejects_no_columns() -> None:
+    with pytest.raises(pydantic.ValidationError):
+        pda.Table(
+            schema_name="test_schema",
+            table_name="test_table",
+            columns=set(),
+            pk_cols={"test_id"},
+        )

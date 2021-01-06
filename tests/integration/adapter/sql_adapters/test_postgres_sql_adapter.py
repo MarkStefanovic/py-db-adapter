@@ -49,7 +49,7 @@ def test_create_table_sql(postgres_pyodbc_db_uri: str) -> None:
     expected = (
         "CREATE TABLE hr.employee (active BOOL NOT NULL, date_added TIMESTAMP NOT NULL, date_updated TIMESTAMP NULL, "
         "employee_dependents BIGINT NOT NULL, employee_dob DATE NOT NULL, employee_gender VARCHAR(255) NOT NULL, "
-        "employee_id BIGINT NOT NULL, employee_middle_initial VARCHAR(2) NULL, employee_name VARCHAR(8190) NOT NULL, "
+        "employee_id SERIAL, employee_middle_initial VARCHAR(2) NULL, employee_name VARCHAR(8190) NOT NULL, "
         "employee_performance_score FLOAT NOT NULL, employee_phone BIGINT NOT NULL, "
         "employee_salary DECIMAL(9, 2) NOT NULL, quotes VARCHAR(255) NULL, PRIMARY KEY (employee_id))"
     )
@@ -114,5 +114,5 @@ def test_select_where_method() -> None:
         ),
     )
     # fmt: off
-    assert sql == "SELECT last_run,test_name,test_id FROM dbo.test WHERE test_name = 'test_id'"
+    assert sql == "SELECT last_run,test_id,test_name FROM dbo.test WHERE test_name = 'test_id'"
     # fmt: on
