@@ -20,6 +20,18 @@ class Table(pydantic.BaseModel):
         anystr_strip_whitespace = True
         min_anystr_length = 1
 
+    @pydantic.validator("pk_cols")
+    def pk_cols_required(cls, v: typing.Set[str]) -> typing.Set[str]:
+        if len(v) == 0:
+            raise ValueError("pk_cols is required, but none were provided.")
+        return v
+
+    @pydantic.validator("columns")
+    def columns_required(cls, v: typing.Set[column.Column]) -> typing.Set[column.Column]:
+        if len(v) == 0:
+            raise ValueError("A table must have at least one column.")
+        return v
+
     def add_column(self, /, col: column.Column) -> Table:
         columns = self.columns | {col}
         return self.copy(update={"columns": columns})

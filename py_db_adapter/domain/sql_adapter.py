@@ -263,7 +263,7 @@ class SqlAdapter(abc.ABC):
     def select_where(
         self, *, table: domain_table.Table, predicate: sql_predicate.SqlPredicate
     ) -> str:
-        col_names_csv = ",".join(self.wrap(col) for col in table.column_names)
+        col_names_csv = ",".join(self.wrap(col) for col in sorted(table.column_names))
         full_table_name = self.full_table_name(
             schema_name=table.schema_name, table_name=table.table_name
         )

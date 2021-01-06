@@ -12,5 +12,4 @@ class SqlPredicate(pydantic.BaseModel):
     class Config:
         allow_mutation = False
         anystr_strip_whitespace = True
-        arbitrary_types_allowed = True  # needed to handle adapter.DbAdapter
         min_anystr_length = 1
