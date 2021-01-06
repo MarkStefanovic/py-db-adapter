@@ -70,29 +70,21 @@ def pyodbc_inspect_table(
         if include_cols is None or column_name in include_cols:
             if col.domain_data_type == domain.DataType.Bool:
                 domain_col: domain.Column = domain.BooleanColumn(
-                    schema_name=schema_name,
-                    table_name=table_name,
                     column_name=column_name,
                     nullable=col.nullable_flag,
                 )
             elif col.domain_data_type == domain.DataType.Date:
                 domain_col = domain.DateColumn(
-                    schema_name=schema_name,
-                    table_name=table_name,
                     column_name=column_name,
                     nullable=col.nullable_flag,
                 )
             elif col.domain_data_type == domain.DataType.DateTime:
                 domain_col = domain.DateTimeColumn(
-                    schema_name=schema_name,
-                    table_name=table_name,
                     column_name=column_name,
                     nullable=col.nullable_flag,
                 )
             elif col.domain_data_type == domain.DataType.Decimal:
                 domain_col = domain.DecimalColumn(
-                    schema_name=schema_name,
-                    table_name=table_name,
                     column_name=column_name,
                     nullable=col.nullable_flag,
                     precision=col.precision or 18,
@@ -100,23 +92,17 @@ def pyodbc_inspect_table(
                 )
             elif col.domain_data_type == domain.DataType.Float:
                 domain_col = domain.FloatColumn(
-                    schema_name=schema_name,
-                    table_name=table_name,
                     column_name=column_name,
                     nullable=col.nullable_flag,
                 )
             elif col.domain_data_type == domain.DataType.Int:
                 domain_col = domain.IntegerColumn(
                     autoincrement=col.autoincrement_flag,
-                    schema_name=schema_name,
-                    table_name=table_name,
                     column_name=column_name,
                     nullable=col.nullable_flag,
                 )
             elif col.domain_data_type == domain.DataType.Text:
                 domain_col = domain.TextColumn(
-                    schema_name=schema_name,
-                    table_name=table_name,
                     column_name=column_name,
                     nullable=col.nullable_flag,
                     max_length=col.length,
@@ -128,18 +114,20 @@ def pyodbc_inspect_table(
 
             domain_cols.append(domain_col)
 
-    pk_col_names = _inspect_pks(con=con, table_name=table_name, schema_name=schema_name)
     if custom_pk_cols:
-        col_names = {col.column_name.lower() for col in domain_cols}
-        missing_pk_col_names = {col for col in pk_col_names if col not in col_names}
-        if missing_pk_col_names:
-            raise domain.exceptions.InvalidCustomPrimaryKey(
-                sorted(missing_pk_col_names)
-            )
         pk_col_names = custom_pk_cols
     else:
-        if not pk_col_names:
-            raise domain.exceptions.MissingPrimaryKey(schema_name=schema_name, table_name=table_name)
+        pk_col_names = _inspect_pks(con=con, table_name=table_name, schema_name=schema_name)
+
+    if not pk_col_names:
+        raise domain.exceptions.MissingPrimaryKey(schema_name=schema_name, table_name=table_name)
+
+    col_names = {col.column_name.lower() for col in domain_cols}
+    missing_pk_col_names = {col for col in pk_col_names if col not in col_names}
+    if missing_pk_col_names:
+        raise domain.exceptions.InvalidCustomPrimaryKey(
+            sorted(missing_pk_col_names)
+        )
 
     return domain.Table(
         schema_name=schema_name,
@@ -294,7 +282,7 @@ def _inspect_pks(
     con: pyodbc.Connection, table_name: str, schema_name: typing.Optional[str]
 ) -> typing.Set[str]:
     with con.cursor() as cur:
-        return {col.column_name for col in cur.primaryKeys(table_name, schema=schema_name)}
+        return {col.column_name.lower() for col in cur.primaryKeys(table_name, schema=schema_name)}
 
 
 def pyodbc_table_exists(
