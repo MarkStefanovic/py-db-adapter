@@ -37,6 +37,12 @@ class Datasource(pydantic.BaseModel):
         arbitrary_types_allowed = True  # needed to handle adapter.DbAdapter
         min_anystr_length = 1
 
+    def clear_cache(self) -> None:
+        if self.cache_dir:
+            fp = self.cache_dir / f"{self.table_name}.dest-keys.p"
+            if fp.exists():
+                fp.unlink()
+
     @property
     def column_names(self) -> typing.Set[str]:
         return {col.column_name for col in self._table.columns}
