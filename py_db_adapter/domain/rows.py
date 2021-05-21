@@ -54,7 +54,13 @@ class Rows:
     def as_dicts(self) -> typing.List[typing.Dict[str, typing.Hashable]]:
         return [dict(sorted(zip(self._column_names, row))) for row in self._rows]
 
-    def as_tuples(self) -> typing.List[Row]:
+    def as_tuples(self, *, sort_columns: bool = True) -> typing.List[Row]:
+        if sort_columns:
+            ordered_col_indices = [
+                self._column_indices[col_name]
+                for col_name in sorted(self._column_names)
+            ]
+            return [tuple(row[i] for i in ordered_col_indices) for row in self._rows]
         return self._rows
 
     def batches(self, /, size: int) -> typing.Generator[Rows, typing.Any, None]:

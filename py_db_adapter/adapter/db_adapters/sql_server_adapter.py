@@ -32,9 +32,7 @@ class SqlServerAdapter(domain.DbAdapter):
         sql = self._sql_adapter.table_exists(
             schema_name=schema_name, table_name=table_name
         )
-        result = cur.execute(sql).fetchone()
+        result = cur.execute(sql).fetchval()
         if result:
-            row_ct = result[0]
-            if row_ct:
-                return row_ct > 0
+            return result > 0
         return False

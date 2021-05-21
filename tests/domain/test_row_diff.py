@@ -1,5 +1,5 @@
 import py_db_adapter.domain.rows
-from py_db_adapter.domain import row_diff, rows
+from py_db_adapter.domain import rows
 
 
 def test_as_lookup_table() -> None:

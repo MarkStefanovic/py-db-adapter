@@ -39,25 +39,47 @@ def test_sync_with_explicit_cols(pg_cursor: pyodbc.Cursor) -> None:
         fast_executemany=True,
     )
     check_customer2_table_in_sync(cur=pg_cursor)
-    #
-    # # test update
-    # cur.execute(
-    #     "UPDATE sales.customer SET customer_first_name = 'Frank' WHERE customer_first_name = 'Dan'"
-    # )
-    # cur.commit()
-    # dest.sync(src=src, recreate=False)
-    # dest.commit()
-    # check_customer2_table_in_sync(postgres_pyodbc_db_uri)
-    #
-    # # test delete
-    # cur.execute("DELETE FROM sales.customer WHERE customer_first_name = 'Steve'")
-    # cur.commit()
-    # dest.sync(src=src, recreate=False)
-    # dest.commit()
-    # check_customer2_table_in_sync(postgres_pyodbc_db_uri)
-    #
-    # rows = cur.execute("SELECT COUNT(*) FROM sales.customer").fetchval()
-    # assert rows == 8
+
+    # test update
+    pg_cursor.execute(
+        "UPDATE sales.customer SET customer_first_name = 'Frank' WHERE customer_first_name = 'Dan'"
+    )
+    pg_cursor.commit()
+    service.sync(
+        src_cur=pg_cursor,
+        dest_cur=pg_cursor,
+        src_db_adapter=db_adapter,
+        dest_db_adapter=db_adapter,
+        src_schema_name="sales",
+        src_table_name="customer",
+        dest_schema_name="sales",
+        dest_table_name="customer2",
+        pk_cols={"customer_id"},
+        compare_cols={"customer_first_name", "customer_last_name"},
+        fast_executemany=True,
+    )
+    check_customer2_table_in_sync(cur=pg_cursor)
+
+    # test delete
+    pg_cursor.execute("DELETE FROM sales.customer WHERE customer_first_name = 'Steve'")
+    pg_cursor.commit()
+    service.sync(
+        src_cur=pg_cursor,
+        dest_cur=pg_cursor,
+        src_db_adapter=db_adapter,
+        dest_db_adapter=db_adapter,
+        src_schema_name="sales",
+        src_table_name="customer",
+        dest_schema_name="sales",
+        dest_table_name="customer2",
+        pk_cols={"customer_id"},
+        compare_cols={"customer_first_name", "customer_last_name"},
+        fast_executemany=True,
+    )
+    check_customer2_table_in_sync(cur=pg_cursor)
+
+    rows = pg_cursor.execute("SELECT COUNT(*) FROM sales.customer").fetchval()
+    assert rows == 8
 
 
 # def test_sync_with_default_cols(

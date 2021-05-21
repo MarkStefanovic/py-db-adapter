@@ -30,12 +30,11 @@ class PostgresAdapter(domain.DbAdapter):
         sql = self.__sql_adapter.table_exists(
             schema_name=schema_name, table_name=table_name
         )
-        result = cur.execute(sql).fetchone()
+        result = cur.execute(sql).fetchval()
         if result:
-            flag = result[0]
-            if flag == 0:
+            if result == 0:
                 return False
-            elif flag == 1:
+            elif result == 1:
                 return True
             else:
                 raise domain.exceptions.InvalidSqlGenerated(
