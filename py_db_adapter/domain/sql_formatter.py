@@ -1,4 +1,4 @@
-all = ("standardize_sql",)
+__all__ = ("standardize_sql",)
 
 
 def standardize_sql(sql: str) -> str:
