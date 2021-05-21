@@ -70,7 +70,7 @@ class DbAdapter(abc.ABC):
             return True
         else:
             sql = self._sql_adapter.definition(table)
-            cur.execute(sql=sql)
+            cur.execute(sql)
             logger.info(f"{table.schema_name}.{table.table_name} was created.")
             return False
 
