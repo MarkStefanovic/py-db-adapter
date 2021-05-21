@@ -12,6 +12,8 @@ __all__ = (
     "NoCommonKeyColumns",
     "InvalidCustomPrimaryKey",
     "TableDoesNotExist",
+    "TableMissingPrimaryKey",
+    "TableHasNoColumns",
 )
 
 
