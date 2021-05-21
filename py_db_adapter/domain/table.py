@@ -1,40 +1,23 @@
 from __future__ import annotations
 
+import dataclasses
 import typing
-
-import pydantic
 
 from py_db_adapter.domain import column, exceptions
 
 __all__ = ("Table",)
 
 
-class Table(pydantic.BaseModel):
+@dataclasses.dataclass(frozen=True)
+class Table:
     schema_name: typing.Optional[str]
     table_name: str
     columns: typing.Set[column.Column]
     pk_cols: typing.Set[str]
 
-    class Config:
-        allow_mutation = False
-        anystr_strip_whitespace = True
-        min_anystr_length = 1
-
-    @pydantic.validator("pk_cols")
-    def pk_cols_required(cls, v: typing.Set[str]) -> typing.Set[str]:
-        if len(v) == 0:
-            raise ValueError("pk_cols is required, but none were provided.")
-        return v
-
-    @pydantic.validator("columns")
-    def columns_required(cls, v: typing.Set[column.Column]) -> typing.Set[column.Column]:
-        if len(v) == 0:
-            raise ValueError("A table must have at least one column.")
-        return v
-
     def add_column(self, /, col: column.Column) -> Table:
         columns = self.columns | {col}
-        return self.copy(update={"columns": columns})
+        return dataclasses.replace(self, columns=columns)
 
     def as_history_table(self) -> Table:
         """Add columns used for row versioning"""
@@ -55,8 +38,11 @@ class Table(pydantic.BaseModel):
         )
         columns = self.columns | {id_col, valid_from_col, valid_to_col}
         pk_cols = self.pk_cols | {id_col.column_name}
-        return self.copy(
-            update={"pk_cols": pk_cols, "table_name": f"{self.table_name}_history", "columns": columns}
+        return dataclasses.replace(
+            self,
+            pk_cols=pk_cols,
+            table_name=f"{self.table_name}_history",
+            columns=columns,
         )
 
     def column_by_name(self, /, column_name: str) -> column.Column:
@@ -74,7 +60,11 @@ class Table(pydantic.BaseModel):
         return {col.column_name for col in self.columns}
 
     def copy_table(self, schema_name: str, table_name: str) -> Table:
-        return self.copy(update={"schema_name": schema_name, "table_name": table_name})
+        return dataclasses.replace(
+            self,
+            schema_name=schema_name,
+            table_name=table_name,
+        )
 
     @property
     def non_pk_column_names(self) -> typing.Set[str]:

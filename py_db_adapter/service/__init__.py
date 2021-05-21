@@ -1,1 +1,1 @@
-from py_db_adapter.service.datasource import *
+from py_db_adapter.service.sync import *

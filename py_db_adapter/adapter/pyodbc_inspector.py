@@ -4,27 +4,49 @@ DB-API v2: https://www.python.org/dev/peps/pep-0249/
 ref: see columns section of https://code.google.com/archive/p/pyodbc/wikis/Cursor.wiki
 
 """
-from __future__ import annotations
-
+import dataclasses
 import pathlib
 import pickle
 import typing
 
-import pydantic
 import pyodbc
 
 from py_db_adapter import domain
 
-__all__ = (
-    "pyodbc_inspect_table",
-    "pyodbc_inspect_table_and_cache",
-    "pyodbc_table_exists",
-)
+__all__ = ("inspect_table",)
+
+
+def inspect_table(
+    *,
+    cur: pyodbc.Cursor,
+    table_name: str,
+    schema_name: typing.Optional[str],
+    pk_cols: typing.Optional[typing.Set[str]] = None,
+    include_cols: typing.Optional[typing.Set[str]] = None,
+    cache_dir: typing.Optional[pathlib.Path] = None,
+) -> domain.Table:
+    if cache_dir:
+        return pyodbc_inspect_table_and_cache(
+            cur=cur,
+            table_name=table_name,
+            schema_name=schema_name,
+            custom_pk_cols=pk_cols,
+            include_cols=include_cols,
+            cache_dir=cache_dir,
+        )
+    else:
+        return pyodbc_inspect_table(
+            cur=cur,
+            table_name=table_name,
+            schema_name=schema_name,
+            custom_pk_cols=pk_cols,
+            include_cols=include_cols,
+        )
 
 
 def pyodbc_inspect_table_and_cache(
     cache_dir: pathlib.Path,
-    con: pyodbc.Connection,
+    cur: pyodbc.Cursor,
     table_name: str,
     schema_name: typing.Optional[str] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
@@ -35,7 +57,7 @@ def pyodbc_inspect_table_and_cache(
         table = pickle.load(open(file=fp, mode="rb"))
     else:
         table = pyodbc_inspect_table(
-            con=con,
+            cur=cur,
             table_name=table_name,
             schema_name=schema_name,
             custom_pk_cols=custom_pk_cols,
@@ -46,13 +68,13 @@ def pyodbc_inspect_table_and_cache(
 
 
 def pyodbc_inspect_table(
-    con: pyodbc.Connection,
+    cur: pyodbc.Cursor,
     table_name: str,
     schema_name: typing.Optional[str] = None,
     custom_pk_cols: typing.Optional[typing.Set[str]] = None,
     include_cols: typing.Optional[typing.Set[str]] = None,
 ) -> domain.Table:
-    if not pyodbc_table_exists(con=con, table_name=table_name, schema_name=schema_name):
+    if not pyodbc_table_exists(cur=cur, table_name=table_name, schema_name=schema_name):
         raise domain.exceptions.TableDoesNotExist(
             table_name=table_name, schema_name=schema_name
         )
@@ -63,7 +85,7 @@ def pyodbc_inspect_table(
     if custom_pk_cols:
         custom_pk_cols = {col.lower() for col in custom_pk_cols}
 
-    pyodbc_cols = _inspect_cols(con=con, table_name=table_name, schema_name=schema_name)
+    pyodbc_cols = _inspect_cols(cur=cur, table_name=table_name, schema_name=schema_name)
     domain_cols = []
     for col in pyodbc_cols:
         column_name = col.column_name.lower()
@@ -117,17 +139,19 @@ def pyodbc_inspect_table(
     if custom_pk_cols:
         pk_col_names = custom_pk_cols
     else:
-        pk_col_names = _inspect_pks(con=con, table_name=table_name, schema_name=schema_name)
+        pk_col_names = _inspect_pks(
+            cur=cur, table_name=table_name, schema_name=schema_name
+        )
 
     if not pk_col_names:
-        raise domain.exceptions.MissingPrimaryKey(schema_name=schema_name, table_name=table_name)
+        raise domain.exceptions.MissingPrimaryKey(
+            schema_name=schema_name, table_name=table_name
+        )
 
     col_names = {col.column_name.lower() for col in domain_cols}
     missing_pk_col_names = {col for col in pk_col_names if col not in col_names}
     if missing_pk_col_names:
-        raise domain.exceptions.InvalidCustomPrimaryKey(
-            sorted(missing_pk_col_names)
-        )
+        raise domain.exceptions.InvalidCustomPrimaryKey(sorted(missing_pk_col_names))
 
     return domain.Table(
         schema_name=schema_name,
@@ -137,7 +161,8 @@ def pyodbc_inspect_table(
     )
 
 
-class PyodbcColumn(pydantic.BaseModel):
+@dataclasses.dataclass(frozen=True)
+class PyodbcColumn:
     auto_increment: int
     column_name: str
     data_type: int
@@ -205,11 +230,11 @@ class PyodbcColumn(pydantic.BaseModel):
             )
 
     def __repr__(self) -> str:
-        return repr(self.dict())
+        return repr(dataclasses.asdict(self))
 
 
 def _inspect_cols(
-    con: pyodbc.Connection, table_name: str, schema_name: typing.Optional[str]
+    cur: pyodbc.Cursor, table_name: str, schema_name: typing.Optional[str]
 ) -> typing.List[PyodbcColumn]:
     def handle_is_nullable(is_nullable: typing.Union[int, str]) -> bool:
         if isinstance(is_nullable, str):
@@ -227,22 +252,21 @@ def _inspect_cols(
             else:
                 return False
 
-    with con.cursor() as cur:
-        return [
-            PyodbcColumn(
-                auto_increment=get_autoincrement(col),
-                column_name=col.column_name,
-                data_type=col.data_type,
-                field_type=get_field_type(col),
-                is_nullable=handle_is_nullable(col.is_nullable),
-                length=get_length(col),
-                nullable=col.nullable,
-                precision=get_precision(col),
-                scale=get_scale(col),
-                type_name=col.type_name,
-            )
-            for col in cur.columns(table_name, schema=schema_name)
-        ]
+    return [
+        PyodbcColumn(
+            auto_increment=get_autoincrement(col),
+            column_name=col.column_name,
+            data_type=col.data_type,
+            field_type=get_field_type(col),
+            is_nullable=handle_is_nullable(col.is_nullable),
+            length=get_length(col),
+            nullable=col.nullable,
+            precision=get_precision(col),
+            scale=get_scale(col),
+            type_name=col.type_name,
+        )
+        for col in cur.columns(table_name, schema=schema_name)
+    ]
 
 
 def get_autoincrement(row: pyodbc.Row, /) -> int:
@@ -279,16 +303,17 @@ def get_scale(row: pyodbc.Row, /) -> typing.Optional[int]:
 
 
 def _inspect_pks(
-    con: pyodbc.Connection, table_name: str, schema_name: typing.Optional[str]
+    cur: pyodbc.Cursor, table_name: str, schema_name: typing.Optional[str]
 ) -> typing.Set[str]:
-    with con.cursor() as cur:
-        return {col.column_name.lower() for col in cur.primaryKeys(table_name, schema=schema_name)}
+    return {
+        col.column_name.lower()
+        for col in cur.primaryKeys(table_name, schema=schema_name)
+    }
 
 
 def pyodbc_table_exists(
-    con: pyodbc.Connection,
+    cur: pyodbc.Cursor,
     table_name: str,
     schema_name: typing.Optional[str],
 ) -> bool:
-    with con.cursor() as cur:
-        return bool(cur.tables(table=table_name, schema=schema_name).fetchone())
+    return bool(cur.tables(table=table_name, schema=schema_name).fetchone())

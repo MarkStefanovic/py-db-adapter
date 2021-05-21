@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import abc
-import pathlib
-import types
 import typing
 
+import pyodbc
+
 from py_db_adapter.domain import (
-    db_connection,
     exceptions,
     logger as domain_logger,
-    sql_predicate,
-    table as domain_table,
     rows as domain_rows,
     sql_adapter,
+    sql_formatter,
+    sql_predicate,
+    table as domain_table,
 )
 
 __all__ = ("DbAdapter",)
@@ -26,23 +26,27 @@ class DbAdapter(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def _connection(self) -> db_connection.DbConnection:
-        raise NotImplementedError
-
-    @property
-    @abc.abstractmethod
     def _sql_adapter(self) -> sql_adapter.SqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def table_exists(
-        self, *, table_name: str, schema_name: typing.Optional[str] = None
+        self,
+        *,
+        cur: pyodbc.Cursor,
+        table_name: str,
+        schema_name: typing.Optional[str] = None,
     ) -> bool:
-        raise NotImplementedError
+        sql = self._sql_adapter.table_exists(
+            schema_name=schema_name, table_name=table_name
+        )
+        result = fetch_scalar(cur=cur, sql=sql)
+        return True if result else False
 
     def add_rows(
         self,
         *,
+        cur: pyodbc.Cursor,
         schema_name: typing.Optional[str],
         table_name: str,
         rows: domain_rows.Rows,
@@ -52,32 +56,27 @@ class DbAdapter(abc.ABC):
             sql = self._sql_adapter.add_rows(
                 schema_name=schema_name,
                 table_name=table_name,
-                parameter_placeholder=self._connection.parameter_placeholder,
+                parameter_placeholder=parameter_placeholder,
                 rows=batch,
             )
-            params = batch.as_dicts()
-            self._connection.execute(sql=sql, params=params)
+            params = batch.as_tuples()
+            cur.executemany(sql, params)
 
-    def close(self) -> None:
-        self._connection.close()
-
-    def commit(self) -> None:
-        return self._connection.commit()
-
-    def create_table(self, /, table: domain_table.Table) -> bool:
+    def create_table(self, *, cur: pyodbc.Cursor, table: domain_table.Table) -> bool:
         if self.table_exists(
-            table_name=table.table_name, schema_name=table.schema_name
+            cur=cur, table_name=table.table_name, schema_name=table.schema_name
         ):
             return True
         else:
             sql = self._sql_adapter.definition(table)
-            self._connection.execute(sql=sql)
+            cur.execute(sql=sql)
             logger.info(f"{table.schema_name}.{table.table_name} was created.")
             return False
 
     def delete_rows(
         self,
         *,
+        cur: pyodbc.Cursor,
         table: domain_table.Table,
         rows: domain_rows.Rows,
         batch_size: int,
@@ -86,52 +85,53 @@ class DbAdapter(abc.ABC):
             schema_name=table.schema_name,
             table_name=table.table_name,
             pk_cols=table.pk_cols,
-            parameter_placeholder=self._connection.parameter_placeholder,
+            parameter_placeholder=parameter_placeholder,
             row_cols=rows.column_names,
         )
         for batch in rows.batches(batch_size):
-            params = batch.as_dicts()
-            self._connection.execute(sql=sql, params=params)
+            cur.executemany(sql, batch.as_tuples())
 
     def drop_table(
-        self, *, table_name: str, schema_name: typing.Optional[str] = None
+        self,
+        *,
+        cur: pyodbc.Cursor,
+        table_name: str,
+        schema_name: typing.Optional[str] = None,
     ) -> bool:
-        if self.table_exists(table_name=table_name, schema_name=schema_name):
+        if self.table_exists(cur=cur, table_name=table_name, schema_name=schema_name):
             sql = self._sql_adapter.drop(schema_name=schema_name, table_name=table_name)
-            self._connection.execute(sql=sql, params=None)
+            cur.execute(sql=sql, params=None)
             logger.info(f"{schema_name}.{table_name} was dropped.")
             return True
         else:
             return False
 
     def fast_row_count(
-        self, *, table_name: str, schema_name: typing.Optional[str] = None
+        self,
+        *,
+        cur: pyodbc.Cursor,
+        table_name: str,
+        schema_name: typing.Optional[str] = None,
     ) -> int:
         if schema_name is None:
             raise exceptions.SchemaIsRequired(
                 f"A schema is required for PostgresPyodbcDbAdapter's fast_row_count method"
             )
-
         sql = self._sql_adapter.fast_row_count(
             schema_name=schema_name, table_name=table_name
         )
-        with self._connection as con:
-            result = con.fetch(sql=sql, params=None)
-            assert result is not None
-            if result.is_empty:
-                raise exceptions.TableDoesNotExist(
-                    table_name=table_name, schema_name=schema_name
-                )
-
-            row_ct = result.first_value()
-            if not row_ct:
-                return self.row_count(schema_name=schema_name, table_name=table_name)
-
-        return typing.cast(int, row_ct)
+        fast_row_count = fetch_scalar(cur=cur, sql=sql)
+        if fast_row_count is None:
+            return self.row_count(
+                cur=cur, table_name=table_name, schema_name=schema_name
+            )
+        else:
+            return fast_row_count
 
     def fetch_rows_by_primary_key(
         self,
         *,
+        cur: pyodbc.Cursor,
         table: domain_table.Table,
         rows: domain_rows.Rows,
         cols: typing.Optional[typing.Set[str]] = None,
@@ -147,41 +147,26 @@ class DbAdapter(abc.ABC):
                 pk_cols=pk_cols,
                 select_cols=cols,
             )
-            row_batch = self._connection.fetch(sql=sql, params=None)
+            row_batch = fetch_rows(cur=cur, sql=sql, params=None)
             batches.append(row_batch)
         return domain_rows.Rows.concat(batches)
 
-    def inspect_table(
+    def row_count(
         self,
         *,
+        cur: pyodbc.Cursor,
         table_name: str,
         schema_name: typing.Optional[str] = None,
-        pk_cols: typing.Optional[typing.Set[str]] = None,
-        include_cols: typing.Optional[typing.Set[str]] = None,
-        cache_dir: typing.Optional[pathlib.Path] = None,
-    ) -> domain_table.Table:
-        return self._connection.inspect_table(
-            table_name=table_name,
-            schema_name=schema_name,
-            pk_cols=pk_cols,
-            include_cols=include_cols,
-            cache_dir=cache_dir,
-        )
-
-    def open(self) -> None:
-        self._connection.open()
-
-    def row_count(
-        self, *, table_name: str, schema_name: typing.Optional[str] = None
     ) -> int:
         sql = self._sql_adapter.row_count(
             schema_name=schema_name, table_name=table_name
         )
-        return typing.cast(int, self._connection.fetch(sql=sql).first_value())
+        return fetch_scalar(cur=cur, sql=sql)
 
     def select_all(
         self,
         *,
+        cur: pyodbc.Cursor,
         table: domain_table.Table,
         columns: typing.Optional[typing.Set[str]] = None,
     ) -> domain_rows.Rows:
@@ -190,31 +175,22 @@ class DbAdapter(abc.ABC):
             table_name=table.table_name,
             columns=columns,
         )
-        result = self._connection.fetch(sql=sql)
-        if result is None:
-            return domain_rows.Rows(
-                column_names=columns or sorted(table.column_names),
-                rows=[],
-            )
-        else:
-            return result
+        return fetch_rows(cur=cur, sql=sql, params=None)
 
     def select_where(
-        self, *, table: domain_table.Table, predicate: sql_predicate.SqlPredicate
+        self,
+        *,
+        cur: pyodbc.Cursor,
+        table: domain_table.Table,
+        predicate: sql_predicate.SqlPredicate,
     ) -> domain_rows.Rows:
         sql = self._sql_adapter.select_where(table=table, predicate=predicate)
-        result = self._connection.fetch(sql=sql)
-        if result is None:
-            return domain_rows.Rows(
-                column_names=table.column_names or sorted(table.column_names),
-                rows=[],
-            )
-        else:
-            return result
+        return fetch_rows(cur=cur, sql=sql, params=None)
 
     def table_keys(
         self,
         *,
+        cur: pyodbc.Cursor,
         table: domain_table.Table,
         additional_cols: typing.Optional[typing.Set[str]],
     ) -> domain_rows.Rows:
@@ -224,24 +200,19 @@ class DbAdapter(abc.ABC):
             table_name=table.table_name,
             columns=cols,
         )
-        result = self._connection.fetch(sql=sql)
-        if result is None:
-            return domain_rows.Rows(
-                column_names=sorted(table.pk_cols | set(additional_cols)),
-                rows=[],
-            )
-        else:
-            return result
+        result = fetch_rows(cur=cur, sql=sql, params=None)
+        return result.subset(column_names=(table.pk_cols | set(additional_cols)))
 
     def truncate_table(
-        self, *, schema_name: typing.Optional[str], table_name: str
+        self, *, cur: pyodbc.Cursor, schema_name: typing.Optional[str], table_name: str
     ) -> None:
         sql = self._sql_adapter.truncate(schema_name=schema_name, table_name=table_name)
-        self._connection.execute(sql=sql, params=None)
+        cur.execute(sql=sql)
 
     def update_table(
         self,
         *,
+        cur: pyodbc.Cursor,
         table: domain_table.Table,
         rows: domain_rows.Rows,
         batch_size: int,
@@ -252,7 +223,7 @@ class DbAdapter(abc.ABC):
                 table_name=table.table_name,
                 pk_cols=table.pk_cols,
                 column_names=table.column_names,
-                parameter_placeholder=self._connection.parameter_placeholder,
+                parameter_placeholder=parameter_placeholder,
             )
             pk_cols = sorted(table.pk_cols)
             non_pk_cols = sorted(
@@ -261,19 +232,44 @@ class DbAdapter(abc.ABC):
             unordered_params = batch.as_dicts()
             param_order = non_pk_cols + pk_cols
             ordered_params = [
-                {k: row[k] for k in param_order} for row in unordered_params
+                tuple(row[k] for k in param_order) for row in unordered_params
             ]
-            self._connection.execute(sql=sql, params=ordered_params)
+            cur.execute(sql, ordered_params)
 
-    def __enter__(self) -> DbAdapter:
-        self.open()
-        return self
 
-    def __exit__(
-        self,
-        exc_type: typing.Optional[typing.Type[BaseException]],
-        exc_inst: typing.Optional[BaseException],
-        exc_tb: typing.Optional[types.TracebackType],
-    ) -> typing.Literal[False]:
-        self.close()
-        return False
+def fetch_rows(
+    *,
+    cur: pyodbc.Cursor,
+    sql: str,
+    params: typing.Optional[typing.List[typing.Tuple[typing.Any, ...]]] = None,
+) -> domain_rows.Rows:
+    std_sql = sql_formatter.standardize_sql(sql)
+    logger.debug(f"FETCH:\n\t{std_sql}\n\tparams={params}")
+    positional_params = [tuple(param.values()) for param in params or {}]
+    if params is None:
+        result = cur.execute(std_sql)
+    elif len(params) > 1:
+        result = cur.executemany(std_sql, positional_params)
+    else:
+        result = cur.execute(std_sql, positional_params[0])
+
+    column_names = [description[0] for description in cur.description]
+    if rows := result.fetchall():
+        return domain_rows.Rows(
+            column_names=column_names, rows=[tuple(row) for row in rows]
+        )
+    else:
+        return domain_rows.Rows(column_names=column_names, rows=[])
+
+
+def fetch_scalar(*, cur: pyodbc.Cursor, sql: str) -> typing.Any:
+    std_sql = sql_formatter.standardize_sql(sql)
+    logger.debug(f"FETCH:\n\t{std_sql}")
+    result = cur.execute(sql).fetchone()
+    print(f"{result=}")
+    if result:
+        return result[0]
+
+
+def parameter_placeholder(column_name: str, /) -> str:
+    return "?"
