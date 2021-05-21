@@ -40,7 +40,7 @@ class DbAdapter(abc.ABC):
         sql = self._sql_adapter.table_exists(
             schema_name=schema_name, table_name=table_name
         )
-        result = fetch_scalar(cur=cur, sql=sql)
+        result = cur.execute(sql).fetchval()
         return True if result else False
 
     def add_rows(
@@ -60,6 +60,7 @@ class DbAdapter(abc.ABC):
                 rows=batch,
             )
             params = batch.as_tuples()
+            print(f"{sql=}, {params=}")
             cur.executemany(sql, params)
 
     def create_table(self, *, cur: pyodbc.Cursor, table: domain_table.Table) -> bool:
@@ -89,7 +90,7 @@ class DbAdapter(abc.ABC):
             row_cols=rows.column_names,
         )
         for batch in rows.batches(batch_size):
-            cur.executemany(sql, batch.as_tuples())
+            cur.executemany(sql, batch.as_tuples(sort_columns=False))
 
     def drop_table(
         self,
@@ -120,7 +121,7 @@ class DbAdapter(abc.ABC):
         sql = self._sql_adapter.fast_row_count(
             schema_name=schema_name, table_name=table_name
         )
-        fast_row_count = fetch_scalar(cur=cur, sql=sql)
+        fast_row_count = cur.execute(sql).fetchval()
         if fast_row_count is None:
             return self.row_count(
                 cur=cur, table_name=table_name, schema_name=schema_name
@@ -161,7 +162,7 @@ class DbAdapter(abc.ABC):
         sql = self._sql_adapter.row_count(
             schema_name=schema_name, table_name=table_name
         )
-        return fetch_scalar(cur=cur, sql=sql)
+        return cur.execute(sql).fetchval()
 
     def select_all(
         self,
@@ -201,7 +202,7 @@ class DbAdapter(abc.ABC):
             columns=cols,
         )
         result = fetch_rows(cur=cur, sql=sql, params=None)
-        return result.subset(column_names=(table.pk_cols | set(additional_cols)))
+        return result.subset(column_names=(table.pk_cols | set(additional_cols or [])))
 
     def truncate_table(
         self, *, cur: pyodbc.Cursor, schema_name: typing.Optional[str], table_name: str
@@ -234,7 +235,7 @@ class DbAdapter(abc.ABC):
             ordered_params = [
                 tuple(row[k] for k in param_order) for row in unordered_params
             ]
-            cur.execute(sql, ordered_params)
+            cur.executemany(sql, ordered_params)
 
 
 def fetch_rows(
@@ -245,13 +246,12 @@ def fetch_rows(
 ) -> domain_rows.Rows:
     std_sql = sql_formatter.standardize_sql(sql)
     logger.debug(f"FETCH:\n\t{std_sql}\n\tparams={params}")
-    positional_params = [tuple(param.values()) for param in params or {}]
     if params is None:
         result = cur.execute(std_sql)
     elif len(params) > 1:
-        result = cur.executemany(std_sql, positional_params)
+        result = cur.executemany(std_sql, params)
     else:
-        result = cur.execute(std_sql, positional_params[0])
+        result = cur.execute(std_sql, params[0])
 
     column_names = [description[0] for description in cur.description]
     if rows := result.fetchall():
@@ -260,15 +260,6 @@ def fetch_rows(
         )
     else:
         return domain_rows.Rows(column_names=column_names, rows=[])
-
-
-def fetch_scalar(*, cur: pyodbc.Cursor, sql: str) -> typing.Any:
-    std_sql = sql_formatter.standardize_sql(sql)
-    logger.debug(f"FETCH:\n\t{std_sql}")
-    result = cur.execute(sql).fetchone()
-    print(f"{result=}")
-    if result:
-        return result[0]
 
 
 def parameter_placeholder(column_name: str, /) -> str:

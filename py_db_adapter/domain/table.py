@@ -15,6 +15,16 @@ class Table:
     columns: typing.Set[column.Column]
     pk_cols: typing.Set[str]
 
+    def __post_init__(self):
+        if not self.pk_cols:
+            raise exceptions.TableMissingPrimaryKey(
+                schema_name=self.schema_name, table_name=self.table_name
+            )
+        if not self.columns:
+            raise exceptions.TableHasNoColumns(
+                schema_name=self.schema_name, table_name=self.table_name
+            )
+
     def add_column(self, /, col: column.Column) -> Table:
         columns = self.columns | {col}
         return dataclasses.replace(self, columns=columns)
@@ -29,12 +39,10 @@ class Table:
         valid_from_col = column.DateTimeColumn(
             column_name="valid_from",
             nullable=False,
-            autoincrement=False,
         )
         valid_to_col = column.DateTimeColumn(
             column_name="valid_to",
             nullable=False,
-            autoincrement=False,
         )
         columns = self.columns | {id_col, valid_from_col, valid_to_col}
         pk_cols = self.pk_cols | {id_col.column_name}

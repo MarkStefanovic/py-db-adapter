@@ -35,14 +35,13 @@ def test_postgres_float_column_sql_adapter_literal() -> None:
     assert actual == expected
 
 
-def test_create_table_sql(postgres_pyodbc_db_uri: str) -> None:
+def test_create_table_sql(pg_cursor: pyodbc.Cursor) -> None:
     sql_adapter = pda.PostgreSQLAdapter()
-    with pyodbc.connect(postgres_pyodbc_db_uri) as con:
-        table = pda.pyodbc_inspect_table(
-            con=con,
-            table_name="employee",
-            schema_name="hr",
-        )
+    table = pda.inspect_table(
+        cur=pg_cursor,
+        table_name="employee",
+        schema_name="hr",
+    )
     actual = sql_adapter.definition(table)
     expected = (
         "CREATE TABLE hr.employee (active BOOL NOT NULL, date_added TIMESTAMP NOT NULL, date_updated TIMESTAMP NULL, "
