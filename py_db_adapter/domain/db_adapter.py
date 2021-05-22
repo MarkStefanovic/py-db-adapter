@@ -85,7 +85,7 @@ class DbAdapter(abc.ABC):
         sql = self._sql_adapter.delete(
             schema_name=table.schema_name,
             table_name=table.table_name,
-            pk_cols=table.pk_cols,
+            pk_cols=set(table.primary_key.columns),
             parameter_placeholder=parameter_placeholder,
             row_cols=rows.column_names,
         )
@@ -138,7 +138,9 @@ class DbAdapter(abc.ABC):
         cols: typing.Optional[typing.Set[str]] = None,
         batch_size: int,
     ) -> domain_rows.Rows:
-        pk_cols = {col for col in table.columns if col.column_name in table.pk_cols}
+        pk_cols = {
+            col for col in table.columns if col.column_name in table.primary_key.columns
+        }
         batches: typing.List[domain_rows.Rows] = []
         for batch in rows.batches(batch_size):
             sql = self._sql_adapter.fetch_rows_by_primary_key_values(
@@ -195,14 +197,20 @@ class DbAdapter(abc.ABC):
         table: domain_table.Table,
         additional_cols: typing.Optional[typing.Set[str]],
     ) -> domain_rows.Rows:
-        cols = table.pk_cols | additional_cols if additional_cols else table.pk_cols
+        cols = (
+            set(table.primary_key.columns) | additional_cols
+            if additional_cols
+            else set(table.primary_key.columns)
+        )
         sql = self._sql_adapter.select_distinct(
             schema_name=table.schema_name,
             table_name=table.table_name,
             columns=cols,
         )
         result = fetch_rows(cur=cur, sql=sql, params=None)
-        return result.subset(column_names=(table.pk_cols | set(additional_cols or [])))
+        return result.subset(
+            column_names=(set(table.primary_key.columns) | set(additional_cols or []))
+        )
 
     def truncate_table(
         self, *, cur: pyodbc.Cursor, schema_name: typing.Optional[str], table_name: str
@@ -222,13 +230,15 @@ class DbAdapter(abc.ABC):
             sql = self._sql_adapter.update(
                 schema_name=table.schema_name,
                 table_name=table.table_name,
-                pk_cols=table.pk_cols,
+                pk_cols=set(table.primary_key.columns),
                 column_names=table.column_names,
                 parameter_placeholder=parameter_placeholder,
             )
-            pk_cols = sorted(table.pk_cols)
+            pk_cols = sorted(set(table.primary_key.columns))
             non_pk_cols = sorted(
-                col for col in table.column_names if col not in table.pk_cols
+                col
+                for col in table.column_names
+                if col not in table.primary_key.columns
             )
             unordered_params = batch.as_dicts()
             param_order = non_pk_cols + pk_cols

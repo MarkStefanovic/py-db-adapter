@@ -21,7 +21,7 @@ def inspect_table(
     cur: pyodbc.Cursor,
     table_name: str,
     schema_name: typing.Optional[str],
-    pk_cols: typing.Optional[typing.Set[str]] = None,
+    pk_cols: typing.Optional[typing.List[str]] = None,
     include_cols: typing.Optional[typing.Set[str]] = None,
     cache_dir: typing.Optional[pathlib.Path] = None,
 ) -> domain.Table:
@@ -49,7 +49,7 @@ def pyodbc_inspect_table_and_cache(
     cur: pyodbc.Cursor,
     table_name: str,
     schema_name: typing.Optional[str] = None,
-    custom_pk_cols: typing.Optional[typing.Set[str]] = None,
+    custom_pk_cols: typing.Optional[typing.List[str]] = None,
     include_cols: typing.Optional[typing.Set[str]] = None,
 ) -> domain.Table:
     fp = cache_dir / f"{schema_name}.{table_name}.p"
@@ -71,7 +71,7 @@ def pyodbc_inspect_table(
     cur: pyodbc.Cursor,
     table_name: str,
     schema_name: typing.Optional[str] = None,
-    custom_pk_cols: typing.Optional[typing.Set[str]] = None,
+    custom_pk_cols: typing.Optional[typing.List[str]] = None,
     include_cols: typing.Optional[typing.Set[str]] = None,
 ) -> domain.Table:
     if not pyodbc_table_exists(cur=cur, table_name=table_name, schema_name=schema_name):
@@ -83,7 +83,7 @@ def pyodbc_inspect_table(
         include_cols = {col.lower() for col in include_cols}
 
     if custom_pk_cols:
-        custom_pk_cols = {col.lower() for col in custom_pk_cols}
+        custom_pk_cols = [col.lower() for col in custom_pk_cols]
 
     pyodbc_cols = _inspect_cols(cur=cur, table_name=table_name, schema_name=schema_name)
     domain_cols = []
@@ -91,42 +91,49 @@ def pyodbc_inspect_table(
         column_name = col.column_name.lower()
         if include_cols is None or column_name in include_cols:
             if col.domain_data_type == domain.DataType.Bool:
-                domain_col: domain.Column = domain.BooleanColumn(
+                domain_col: domain.Column = domain.Column(
                     column_name=column_name,
                     nullable=col.nullable_flag,
+                    data_type=col.domain_data_type,
                 )
             elif col.domain_data_type == domain.DataType.Date:
-                domain_col = domain.DateColumn(
+                domain_col = domain.Column(
                     column_name=column_name,
                     nullable=col.nullable_flag,
+                    data_type=col.domain_data_type,
                 )
             elif col.domain_data_type == domain.DataType.DateTime:
-                domain_col = domain.DateTimeColumn(
+                domain_col = domain.Column(
                     column_name=column_name,
                     nullable=col.nullable_flag,
+                    data_type=col.domain_data_type,
                 )
             elif col.domain_data_type == domain.DataType.Decimal:
-                domain_col = domain.DecimalColumn(
+                domain_col = domain.Column(
                     column_name=column_name,
                     nullable=col.nullable_flag,
+                    data_type=col.domain_data_type,
                     precision=col.precision or 18,
                     scale=col.scale or 2,
                 )
             elif col.domain_data_type == domain.DataType.Float:
-                domain_col = domain.FloatColumn(
+                domain_col = domain.Column(
                     column_name=column_name,
                     nullable=col.nullable_flag,
+                    data_type=col.domain_data_type,
                 )
             elif col.domain_data_type == domain.DataType.Int:
-                domain_col = domain.IntegerColumn(
+                domain_col = domain.Column(
                     autoincrement=col.autoincrement_flag,
                     column_name=column_name,
                     nullable=col.nullable_flag,
+                    data_type=col.domain_data_type,
                 )
             elif col.domain_data_type == domain.DataType.Text:
-                domain_col = domain.TextColumn(
+                domain_col = domain.Column(
                     column_name=column_name,
                     nullable=col.nullable_flag,
+                    data_type=col.domain_data_type,
                     max_length=col.length,
                 )
             else:
@@ -153,11 +160,16 @@ def pyodbc_inspect_table(
     if missing_pk_col_names:
         raise domain.exceptions.InvalidCustomPrimaryKey(sorted(missing_pk_col_names))
 
+    pk = domain.PrimaryKey(
+        schema_name=schema_name,
+        table_name=table_name,
+        columns=pk_col_names,
+    )
     return domain.Table(
         schema_name=schema_name,
         table_name=table_name,
-        columns=set(domain_cols),
-        pk_cols=pk_col_names,
+        columns=frozenset(domain_cols),
+        primary_key=pk,
     )
 
 
@@ -304,11 +316,11 @@ def get_scale(row: pyodbc.Row, /) -> typing.Optional[int]:
 
 def _inspect_pks(
     cur: pyodbc.Cursor, table_name: str, schema_name: typing.Optional[str]
-) -> typing.Set[str]:
-    return {
+) -> typing.List[str]:
+    return [
         col.column_name.lower()
         for col in cur.primaryKeys(table_name, schema=schema_name)
-    }
+    ]
 
 
 def pyodbc_table_exists(

@@ -10,7 +10,7 @@ class StandardDecimalColumnSqlAdapter(column_adapters.DecimalColumnSqlAdapter):
     def __init__(
         self,
         *,
-        col: column.DecimalColumn,
+        col: column.Column,
         wrapper: typing.Callable[[str], str],
     ):
         super().__init__(col=col, wrapper=wrapper)

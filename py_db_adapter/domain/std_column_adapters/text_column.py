@@ -9,7 +9,7 @@ class StandardTextColumnSqlAdapter(column_adapters.TextColumnSqlAdapter):
     def __init__(
         self,
         *,
-        col: column.TextColumn,
+        col: column.Column,
         wrapper: typing.Callable[[str], str],
     ):
         super().__init__(col=col, wrapper=wrapper)

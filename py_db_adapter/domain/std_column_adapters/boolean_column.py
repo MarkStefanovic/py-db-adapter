@@ -6,9 +6,7 @@ __all__ = ("StandardBooleanColumnSqlAdapter",)
 
 
 class StandardBooleanColumnSqlAdapter(column_adapters.BooleanColumnSqlAdapter):
-    def __init__(
-        self, *, col: column.BooleanColumn, wrapper: typing.Callable[[str], str]
-    ):
+    def __init__(self, *, col: column.Column, wrapper: typing.Callable[[str], str]):
         super().__init__(col=col, wrapper=wrapper)
 
     @property

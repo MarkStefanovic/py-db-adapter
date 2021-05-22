@@ -15,7 +15,7 @@ def copy_table(
     dest_db_adapter: domain.DbAdapter,
     src_table: domain.Table,
     dest_table_name: str,
-    dest_schema_name: str,
+    dest_schema_name: typing.Optional[str],
     recreate: bool = False,
 ) -> typing.Tuple[domain.Table, bool]:
     """Copy a table's structure

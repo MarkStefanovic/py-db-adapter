@@ -3,13 +3,14 @@ import typing
 import pyodbc
 
 from py_db_adapter import domain
+from py_db_adapter.adapter import sql_adapters
 
 __all__ = ("SqlServerAdapter",)
 
 
 class SqlServerAdapter(domain.DbAdapter):
     def __init__(
-        self, *, sql_adapter: domain.SqlAdapter = domain.SqlServerSQLAdapter()
+        self, *, sql_adapter: domain.SqlAdapter = sql_adapters.SqlServerSQLAdapter()
     ):
         self.__sql_adapter = sql_adapter
 

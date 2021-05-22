@@ -353,18 +353,6 @@ def rows_to_lookup_table(
     }
 
 
-def fetch_rows(con: pyodbc.Connection, sql: str, params: typing.Tuple[typing.Any]):
-    @staticmethod
-    def from_result_cursor(cursor: pyodbc.Cursor):
-        column_names = [description[0] for description in cursor.description]
-        if rows := result.fetchall():
-            return domain.Rows(
-                column_names=column_names, rows=[tuple(row) for row in rows]
-            )
-        else:
-            return domain.Rows(column_names=column_names, rows=[])
-
-
 if __name__ == "__main__":
     r = Rows(column_names=["test", "this"], rows=[("abc", "def")])
     print(f"{r=}")

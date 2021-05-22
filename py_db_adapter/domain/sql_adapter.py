@@ -5,6 +5,7 @@ from py_db_adapter.domain import (
     column as domain_column,
     column_adapter as domain_column_adapter,
     column_adapters as domain_column_adapters,
+    data_types,
     rows as domain_rows,
     sql_operator,
     sql_predicate,
@@ -39,48 +40,47 @@ class SqlAdapter(abc.ABC):
 
     @abc.abstractmethod
     def create_boolean_column(
-        self, /, column: domain_column.BooleanColumn
+        self, /, column: domain_column.Column
     ) -> domain_column_adapters.BooleanColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_date_column(
-        self, /, column: domain_column.DateColumn
+        self, /, column: domain_column.Column
     ) -> domain_column_adapters.DateColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_datetime_column(
-        self, /, column: domain_column.DateTimeColumn
+        self, /, column: domain_column.Column
     ) -> domain_column_adapters.DateTimeColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_decimal_column(
-        self, /, column: domain_column.DecimalColumn
+        self, /, column: domain_column.Column
     ) -> domain_column_adapters.DecimalColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_float_column(
-        self, /, column: domain_column.FloatColumn
+        self, /, column: domain_column.Column
     ) -> domain_column_adapters.FloatColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_integer_column(
-        self, /, column: domain_column.IntegerColumn
+        self, /, column: domain_column.Column
     ) -> domain_column_adapters.IntegerColumnSqlAdapter:
         raise NotImplementedError
 
     @abc.abstractmethod
     def create_text_column(
-        self, /, column: domain_column.TextColumn
+        self, /, column: domain_column.Column
     ) -> domain_column_adapters.TextColumnSqlAdapter:
         raise NotImplementedError
 
     def definition(self, /, table: domain_table.Table) -> str:
-        pk_col_csv = ", ".join(self.wrap(col) for col in sorted(table.pk_cols))
         adapters = sorted(
             (self._map_column_to_adapter(col) for col in table.columns),
             key=lambda c: c.column_metadata.column_name,
@@ -89,7 +89,13 @@ class SqlAdapter(abc.ABC):
         full_table_name = self.full_table_name(
             schema_name=table.schema_name, table_name=table.table_name
         )
-        return f"CREATE TABLE {full_table_name} ({col_csv}, PRIMARY KEY ({pk_col_csv}))"
+        uq_constraints = ", ".join(
+            uq.definition(wrapper=self.wrap) for uq in table.unique_constraints
+        )
+        if uq_constraints:
+            uq_constraints = ", " + uq_constraints
+        pk = table.primary_key.definition(wrapper=self.wrap)
+        return f"CREATE TABLE {full_table_name} ({col_csv}{uq_constraints}, {pk})"
 
     def delete(
         self,
@@ -195,22 +201,15 @@ class SqlAdapter(abc.ABC):
     def _map_column_to_adapter(
         self, /, col: domain_column.Column
     ) -> domain_column_adapter.ColumnSqlAdapter[typing.Any]:
-        if isinstance(col, domain_column.BooleanColumn):
-            return self.create_boolean_column(col)
-        elif isinstance(col, domain_column.DateColumn):
-            return self.create_date_column(col)
-        elif isinstance(col, domain_column.DateTimeColumn):
-            return self.create_datetime_column(col)
-        elif isinstance(col, domain_column.DecimalColumn):
-            return self.create_decimal_column(col)
-        elif isinstance(col, domain_column.FloatColumn):
-            return self.create_float_column(col)
-        elif isinstance(col, domain_column.IntegerColumn):
-            return self.create_integer_column(col)
-        elif isinstance(col, domain_column.TextColumn):
-            return self.create_text_column(col)
-        else:
-            raise ValueError(f"Unrecognized col.data_type: {col.data_type!r}")
+        return {  # type: ignore
+            data_types.DataType.Bool: self.create_boolean_column,
+            data_types.DataType.Date: self.create_date_column,
+            data_types.DataType.DateTime: self.create_datetime_column,
+            data_types.DataType.Decimal: self.create_decimal_column,
+            data_types.DataType.Float: self.create_float_column,
+            data_types.DataType.Int: self.create_integer_column,
+            data_types.DataType.Text: self.create_text_column,
+        }[col.data_type](col)
 
     @property
     def max_float_literal_decimal_places(self) -> int:
@@ -222,7 +221,7 @@ class SqlAdapter(abc.ABC):
         return [
             self._map_column_to_adapter(col)
             for col in table.columns
-            if col.column_name in table.pk_cols
+            if col.column_name in table.primary_key.columns
         ]
 
     def row_count(self, *, schema_name: typing.Optional[str], table_name: str) -> str:

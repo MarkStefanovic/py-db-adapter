@@ -11,16 +11,12 @@ class FloatColumnSqlAdapter(column_adapter.ColumnSqlAdapter[float], abc.ABC):
     def __init__(
         self,
         *,
-        col: column.FloatColumn,
+        col: column.Column,
         wrapper: typing.Callable[[str], str],
         max_decimal_places: typing.Optional[int],
     ):
         super().__init__(col=col, wrapper=wrapper)
         self._max_decimal_places = max_decimal_places
-
-    @property
-    def column_metadata(self) -> column.FloatColumn:
-        return typing.cast(column.FloatColumn, super().column_metadata)
 
     def literal(self, value: float) -> str:
         raise NotImplementedError
