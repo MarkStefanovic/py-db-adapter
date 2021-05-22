@@ -12,7 +12,7 @@ __all__ = ("PrimaryKey",)
 class PrimaryKey(abc.ABC):
     schema_name: typing.Optional[str]
     table_name: str
-    columns: typing.List[str]
+    columns: typing.Tuple[str, ...]
 
     def __post_init__(self) -> None:
         if not self.columns:

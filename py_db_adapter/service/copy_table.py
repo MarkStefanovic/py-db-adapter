@@ -3,7 +3,7 @@ import typing
 
 from py_db_adapter import domain
 
-logger = domain.root.getChild("copy_table")
+logger = domain.root_logger.getChild("copy_table")
 
 
 __all__ = ("copy_table",)
