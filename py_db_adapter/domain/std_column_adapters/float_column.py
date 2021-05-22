@@ -9,7 +9,7 @@ class StandardFloatColumnSqlAdapter(column_adapters.FloatColumnSqlAdapter):
     def __init__(
         self,
         *,
-        col: column.FloatColumn,
+        col: column.Column,
         wrapper: typing.Callable[[str], str],
         max_decimal_places: typing.Optional[int],
     ):

@@ -3,12 +3,15 @@ import typing
 import pyodbc
 
 from py_db_adapter import domain
+from py_db_adapter.adapter import sql_adapters
 
 __all__ = ("PostgresAdapter",)
 
 
 class PostgresAdapter(domain.DbAdapter):
-    def __init__(self, *, sql_adapter: domain.SqlAdapter = domain.PostgreSQLAdapter()):
+    def __init__(
+        self, *, sql_adapter: domain.SqlAdapter = sql_adapters.PostgreSQLAdapter()
+    ):
         self.__sql_adapter = sql_adapter
 
     @property
@@ -39,6 +42,6 @@ class PostgresAdapter(domain.DbAdapter):
             else:
                 raise domain.exceptions.InvalidSqlGenerated(
                     sql=sql,
-                    message=f"table_exists should return 0 for False, or 1 for True, but it returned {flag!r}.",
+                    message=f"table_exists should return 0 for False, or 1 for True, but it returned {result!r}.",
                 )
         return False

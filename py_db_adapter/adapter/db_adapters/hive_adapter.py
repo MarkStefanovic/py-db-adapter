@@ -4,12 +4,15 @@ import typing
 import pyodbc
 
 from py_db_adapter import domain
+from py_db_adapter.adapter import sql_adapters
 
 __all__ = ("HiveAdapter",)
 
 
 class HiveAdapter(domain.DbAdapter):
-    def __init__(self, *, sql_adapter: domain.SqlAdapter = domain.HiveSQLAdapter()):
+    def __init__(
+        self, *, sql_adapter: domain.SqlAdapter = sql_adapters.HiveSQLAdapter()
+    ):
         self.__sql_adapter = sql_adapter
 
     def fast_row_count(
@@ -34,7 +37,7 @@ class HiveAdapter(domain.DbAdapter):
     ) -> bool:
         return table_name in self.tables
 
-    @functools.cached_property
+    @functools.cached_property  # type: ignore
     def tables(self, *, cur: pyodbc.Cursor) -> typing.Set[str]:
         sql = "SHOW TABLES"
         rows = cur.execute(sql=sql).fetchall()

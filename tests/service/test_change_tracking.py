@@ -27,8 +27,7 @@ def check_history_table_in_sync(cur: pyodbc.Cursor) -> None:
         FROM sales.customer_history AS ch
         ORDER BY 
             ch.customer_id
-        ,   ch.date_updated DESC NULLS LAST
-        ,   ch.date_added DESC
+        ,   ch.valid_to DESC
     """
     result = cur.execute(sql).fetchall()
     customer2_values = {

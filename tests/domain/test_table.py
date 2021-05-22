@@ -1,4 +1,3 @@
-import pydantic
 import pytest
 
 import py_db_adapter as pda
@@ -7,28 +6,35 @@ from py_db_adapter import domain
 
 @pytest.fixture
 def dummy_table() -> pda.Table:
-    schema_name = "dbo"
-    table_name = "test"
     tbl = pda.Table(
-        schema_name=schema_name,
-        table_name=table_name,
-        columns={
-            pda.IntegerColumn(
-                column_name="test_id",
-                nullable=False,
-                autoincrement=True,
-            ),
-            pda.TextColumn(
-                column_name="test_name",
-                nullable=False,
-                max_length=100,
-            ),
-            pda.DateTimeColumn(
-                column_name="last_run",
-                nullable=False,
-            ),
-        },
-        pk_cols={"test_id"},
+        schema_name="dbo",
+        table_name="test",
+        columns=frozenset(
+            {
+                pda.Column(
+                    column_name="test_id",
+                    nullable=False,
+                    data_type=pda.DataType.Int,
+                    autoincrement=True,
+                ),
+                pda.Column(
+                    column_name="test_name",
+                    nullable=False,
+                    data_type=pda.DataType.Text,
+                    max_length=100,
+                ),
+                pda.Column(
+                    column_name="last_run",
+                    data_type=pda.DataType.DateTime,
+                    nullable=False,
+                ),
+            }
+        ),
+        primary_key=pda.PrimaryKey(
+            schema_name="dbo",
+            table_name="test",
+            columns=["test_id"],
+        ),
     )
     assert len(tbl.column_names) == 3
     return tbl
@@ -55,19 +61,27 @@ def test_table_rejects_missing_pk_cols() -> None:
         pda.Table(
             schema_name="test_schema",
             table_name="test_table",
-            columns={
-                pda.TextColumn(
-                    column_name="first_name",
-                    nullable=False,
-                    max_length=100,
-                ),
-                pda.TextColumn(
-                    column_name="last_name",
-                    nullable=False,
-                    max_length=100,
-                ),
-            },
-            pk_cols=set(),
+            columns=frozenset(
+                {
+                    pda.Column(
+                        column_name="first_name",
+                        nullable=False,
+                        data_type=pda.DataType.Text,
+                        max_length=100,
+                    ),
+                    pda.Column(
+                        column_name="last_name",
+                        nullable=False,
+                        data_type=pda.DataType.Text,
+                        max_length=100,
+                    ),
+                }
+            ),
+            primary_key=pda.PrimaryKey(
+                schema_name="test_schema",
+                table_name="test_table",
+                columns=[],
+            ),
         )
 
 
@@ -76,6 +90,10 @@ def test_table_rejects_no_columns() -> None:
         pda.Table(
             schema_name="test_schema",
             table_name="test_table",
-            columns=set(),
-            pk_cols={"test_id"},
+            columns=frozenset(),
+            primary_key=pda.PrimaryKey(
+                schema_name="test_schema",
+                table_name="test_table",
+                columns=["test_id"],
+            ),
         )

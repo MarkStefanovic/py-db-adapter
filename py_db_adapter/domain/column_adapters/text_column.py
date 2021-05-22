@@ -10,14 +10,10 @@ class TextColumnSqlAdapter(column_adapter.ColumnSqlAdapter[str], abc.ABC):
     def __init__(
         self,
         *,
-        col: column.TextColumn,
+        col: column.Column,
         wrapper: typing.Callable[[str], str],
     ):
         super().__init__(col=col, wrapper=wrapper)
-
-    @property
-    def column_metadata(self) -> column.TextColumn:
-        return typing.cast(column.TextColumn, super().column_metadata)
 
     @abc.abstractmethod
     def literal(self, value: str) -> str:

@@ -7,9 +7,7 @@ __all__ = ("StandardDateTimeColumnSqlAdapter",)
 
 
 class StandardDateTimeColumnSqlAdapter(column_adapters.DateTimeColumnSqlAdapter):
-    def __init__(
-        self, *, col: column.DateTimeColumn, wrapper: typing.Callable[[str], str]
-    ):
+    def __init__(self, *, col: column.Column, wrapper: typing.Callable[[str], str]):
         super().__init__(col=col, wrapper=wrapper)
 
     @property

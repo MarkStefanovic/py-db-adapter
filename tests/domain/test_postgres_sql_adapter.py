@@ -6,9 +6,10 @@ import py_db_adapter as pda
 
 
 def test_postgres_decimal_column_sql_adapter_literal() -> None:
-    column = pda.DecimalColumn(
+    column = pda.Column(
         column_name="dummy",
         nullable=False,
+        data_type=pda.DataType.Decimal,
         precision=18,
         scale=2,
     )
@@ -21,9 +22,10 @@ def test_postgres_decimal_column_sql_adapter_literal() -> None:
 
 
 def test_postgres_float_column_sql_adapter_literal() -> None:
-    column = pda.FloatColumn(
+    column = pda.Column(
         column_name="dummy",
         nullable=False,
+        data_type=pda.DataType.Float,
     )
     sql_adapter = pda.StandardFloatColumnSqlAdapter(
         col=column,
@@ -83,23 +85,30 @@ def test_select_where_method() -> None:
     tbl = pda.Table(
         schema_name=schema_name,
         table_name=table_name,
-        columns={
-            pda.IntegerColumn(
-                column_name="test_id",
-                nullable=False,
-                autoincrement=True,
-            ),
-            pda.TextColumn(
-                column_name="test_name",
-                nullable=False,
-                max_length=100,
-            ),
-            pda.DateTimeColumn(
-                column_name="last_run",
-                nullable=False,
-            ),
-        },
-        pk_cols={"test_id"},
+        columns=frozenset(
+            {
+                pda.Column(
+                    column_name="test_id",
+                    nullable=False,
+                    data_type=pda.DataType.Int,
+                    autoincrement=True,
+                ),
+                pda.Column(
+                    column_name="test_name",
+                    nullable=False,
+                    data_type=pda.DataType.Text,
+                    max_length=100,
+                ),
+                pda.Column(
+                    column_name="last_run",
+                    nullable=False,
+                    data_type=pda.DataType.DateTime,
+                ),
+            }
+        ),
+        primary_key=pda.PrimaryKey(
+            schema_name="dbo", table_name="test", columns=["test_id"]
+        ),
     )
     sql_adapter = pda.PostgreSQLAdapter()
     sql = sql_adapter.select_where(

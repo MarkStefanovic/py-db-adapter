@@ -6,7 +6,7 @@ from py_db_adapter.domain import (
     column as col,
     column_adapters,
     sql_adapter,
-    standard_column_adapters,
+    std_column_adapters,
 )
 
 __all__ = (
@@ -466,49 +466,49 @@ class PostgreSQLAdapter(sql_adapter.SqlAdapter):
         super().__init__(max_float_literal_decimal_places=5)
 
     def create_boolean_column(
-        self, /, column: col.BooleanColumn
+        self, /, column: col.Column
     ) -> PostgresBooleanColumnSqlAdapter:
         return PostgresBooleanColumnSqlAdapter(column=column, wrapper=self.wrap)
 
     def create_date_column(
-        self, /, column: col.DateColumn
+        self, /, column: col.Column
     ) -> column_adapters.DateColumnSqlAdapter:
-        return standard_column_adapters.StandardDateColumnSqlAdapter(
+        return std_column_adapters.StandardDateColumnSqlAdapter(
             col=column, wrapper=self.wrap
         )
 
     def create_datetime_column(
-        self, /, column: col.DateTimeColumn
+        self, /, column: col.Column
     ) -> column_adapters.DateTimeColumnSqlAdapter:
-        return standard_column_adapters.StandardDateTimeColumnSqlAdapter(
+        return std_column_adapters.StandardDateTimeColumnSqlAdapter(
             col=column, wrapper=self.wrap
         )
 
     def create_decimal_column(
-        self, /, column: col.DecimalColumn
+        self, /, column: col.Column
     ) -> column_adapters.DecimalColumnSqlAdapter:
-        return standard_column_adapters.StandardDecimalColumnSqlAdapter(
+        return std_column_adapters.StandardDecimalColumnSqlAdapter(
             col=column, wrapper=self.wrap
         )
 
     def create_float_column(
-        self, /, column: col.FloatColumn
+        self, /, column: col.Column
     ) -> column_adapters.FloatColumnSqlAdapter:
-        return standard_column_adapters.StandardFloatColumnSqlAdapter(
+        return std_column_adapters.StandardFloatColumnSqlAdapter(
             col=column,
             wrapper=self.wrap,
             max_decimal_places=self.max_float_literal_decimal_places,
         )
 
     def create_integer_column(
-        self, /, column: col.IntegerColumn
+        self, /, column: col.Column
     ) -> column_adapters.IntegerColumnSqlAdapter:
         return PostgresIntegerColumnSqlAdapter(column=column, wrapper=self.wrap)
 
     def create_text_column(
-        self, /, column: col.TextColumn
+        self, /, column: col.Column
     ) -> column_adapters.TextColumnSqlAdapter:
-        return standard_column_adapters.StandardTextColumnSqlAdapter(
+        return std_column_adapters.StandardTextColumnSqlAdapter(
             col=column, wrapper=self.wrap
         )
 
@@ -562,7 +562,7 @@ class PostgresBooleanColumnSqlAdapter(column_adapters.BooleanColumnSqlAdapter):
     def __init__(
         self,
         *,
-        column: col.BooleanColumn,
+        column: col.Column,
         wrapper: typing.Callable[[str], str],
     ):
         super().__init__(col=column, wrapper=wrapper)
@@ -580,7 +580,7 @@ class PostgresIntegerColumnSqlAdapter(column_adapters.IntegerColumnSqlAdapter):
     def __init__(
         self,
         *,
-        column: col.IntegerColumn,
+        column: col.Column,
         wrapper: typing.Callable[[str], str],
     ):
         super().__init__(col=column, wrapper=wrapper)

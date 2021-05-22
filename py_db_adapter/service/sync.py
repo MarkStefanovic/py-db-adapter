@@ -23,7 +23,7 @@ def sync(
     src_table_name: str,
     dest_schema_name: typing.Optional[str],
     dest_table_name: str,
-    pk_cols: typing.Optional[typing.Set[str]] = None,  # None = inspect to find out
+    pk_cols: typing.Optional[typing.List[str]] = None,  # None = inspect to find out
     include_cols: typing.Optional[typing.Set[str]] = None,  # None = inspect to find out
     compare_cols: typing.Optional[
         typing.Set[str]
@@ -52,10 +52,10 @@ def sync(
     )
 
     if pk_cols is None:
-        if src_table.pk_cols:
-            pk_cols = src_table.pk_cols
-        elif dest_table.pk_cols:
-            pk_cols = dest_table.pk_cols
+        if src_table.primary_key.columns:
+            pk_cols = src_table.primary_key.columns
+        elif dest_table.primary_key.columns:
+            pk_cols = dest_table.primary_key.columns
         else:
             raise domain.exceptions.MissingPrimaryKey(
                 schema_name=src_schema_name, table_name=src_table_name
@@ -107,7 +107,7 @@ def sync(
         src_rows = src_repo.all(cur=src_cur, columns=include_cols)
         dest_repo.add(cur=dest_cur, rows=src_rows)
         if cache_dir:
-            dest_keys = src_rows.subset(pk_cols | compare_cols)
+            dest_keys = src_rows.subset(set(pk_cols) | compare_cols)
             dump_dest_keys(
                 cache_dir=cache_dir,
                 table_name=dest_table_name,
@@ -128,7 +128,7 @@ def sync(
             )
         changes = dest_rows.compare(
             rows=src_keys,
-            key_cols=pk_cols,
+            key_cols=set(pk_cols),
             compare_cols=compare_cols,
             ignore_missing_key_cols=True,
             ignore_extra_key_cols=True,
@@ -170,9 +170,9 @@ def sync(
             }
 
 
-def clear_cache(self) -> None:
-    if self.cache_dir:
-        fp = self.cache_dir / f"{self.table_name}.dest-keys.p"
+def clear_cache(*, cache_dir: pathlib.Path, table_name: str) -> None:
+    if cache_dir:
+        fp = cache_dir / f"{table_name}.dest-keys.p"
         if fp.exists():
             fp.unlink()
 

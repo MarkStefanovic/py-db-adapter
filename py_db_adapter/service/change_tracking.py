@@ -56,8 +56,9 @@ def update_history_table(
     )
     live_repo = domain.Repository(db=src_db_adapter, table=src_table)
     current_state = live_repo.all(cur=src_cur, columns=src_table.column_names)
+    src_key_cols = set(src_table.primary_key.columns)
     changes = py_db_adapter.domain.rows.RowDiff(
-        key_cols=src_table.pk_cols,
+        key_cols=src_key_cols,
         compare_cols=compare_cols or src_table.non_pk_column_names,
         src_rows=current_state,
         dest_rows=prior_state,
@@ -85,26 +86,26 @@ def update_history_table(
             logger.info(f"Added {rows_added} rows to [{hist_table.table_name}].")
         if rows_deleted := changes.rows_deleted.row_count:
             deleted_ids = {
-                frozenset((pk_col, row_dict[pk_col]) for pk_col in src_table.pk_cols)
+                frozenset((pk_col, row_dict[pk_col]) for pk_col in src_key_cols)
                 for row_dict in changes.rows_deleted.as_dicts()
             }
             soft_deletes = (
                 domain.Rows.from_dicts([
                     row_dict for row_dict in prior_state.as_dicts()
-                    if frozenset((pk_col, row_dict[pk_col]) for pk_col in src_table.pk_cols) in deleted_ids
+                    if frozenset((pk_col, row_dict[pk_col]) for pk_col in src_key_cols) in deleted_ids
                 ])
                     .update_column_values(column_name="valid_to", static_value=ts)
             )
-            hist_repo.update(rows=soft_deletes)
+            hist_repo.update(cur=dest_cur, rows=soft_deletes)
             logger.info(f"Soft deleted {rows_deleted} rows from [{hist_table.table_name}].")
         if rows_updated := changes.rows_updated.row_count:
             updated_ids = {
-                frozenset((pk_col, row_dict[pk_col]) for pk_col in src_table.pk_cols)
+                frozenset((pk_col, row_dict[pk_col]) for pk_col in src_key_cols)
                 for row_dict in changes.rows_updated.as_dicts()
             }
             old_versions = domain.Rows.from_dicts([
                 row_dict for row_dict in prior_state.as_dicts()
-                if frozenset((pk_col, row_dict[pk_col]) for pk_col in src_table.pk_cols) in updated_ids
+                if frozenset((pk_col, row_dict[pk_col]) for pk_col in src_key_cols) in updated_ids
             ]).update_column_values(
                 column_name="valid_to",
                 static_value=ts - datetime.timedelta(microseconds=1),

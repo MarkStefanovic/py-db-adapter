@@ -10,14 +10,10 @@ class BooleanColumnSqlAdapter(column_adapter.ColumnSqlAdapter[bool], abc.ABC):
     def __init__(
         self,
         *,
-        col: column.BooleanColumn,
+        col: column.Column,
         wrapper: typing.Callable[[str], str],
     ):
         super().__init__(col=col, wrapper=wrapper)
-
-    @property
-    def column_metadata(self) -> column.BooleanColumn:
-        return typing.cast(column.BooleanColumn, super().column_metadata)
 
     @abc.abstractmethod
     def literal(self, value: bool) -> str:
