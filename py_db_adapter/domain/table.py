@@ -49,7 +49,7 @@ class Table:
             data_type=DataType.DateTime,
         )
         columns = self.columns | {id_col, valid_from_col, valid_to_col}
-        pk_cols = self.primary_key.columns + [id_col.column_name]
+        pk_cols = self.primary_key.columns + (id_col.column_name,)
         pk = PrimaryKey(
             schema_name=self.schema_name,
             table_name=self.table_name,

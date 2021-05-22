@@ -107,7 +107,7 @@ def test_select_where_method() -> None:
             }
         ),
         primary_key=pda.PrimaryKey(
-            schema_name="dbo", table_name="test", columns=["test_id"]
+            schema_name="dbo", table_name="test", columns=("test_id",)
         ),
     )
     sql_adapter = pda.PostgreSQLAdapter()

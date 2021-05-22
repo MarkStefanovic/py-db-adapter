@@ -33,7 +33,7 @@ def dummy_table() -> pda.Table:
         primary_key=pda.PrimaryKey(
             schema_name="dbo",
             table_name="test",
-            columns=["test_id"],
+            columns=("test_id",),
         ),
     )
     assert len(tbl.column_names) == 3
@@ -80,7 +80,7 @@ def test_table_rejects_missing_pk_cols() -> None:
             primary_key=pda.PrimaryKey(
                 schema_name="test_schema",
                 table_name="test_table",
-                columns=[],
+                columns=tuple(),
             ),
         )
 
@@ -94,6 +94,6 @@ def test_table_rejects_no_columns() -> None:
             primary_key=pda.PrimaryKey(
                 schema_name="test_schema",
                 table_name="test_table",
-                columns=["test_id"],
+                columns=("test_id",),
             ),
         )

@@ -18,7 +18,7 @@ from py_db_adapter.domain import (
 __all__ = ("DbAdapter",)
 
 
-logger = domain_logger.root.getChild("DbAdapter")
+logger = domain_logger.root_logger.getChild("DbAdapter")
 
 
 class DbAdapter(abc.ABC):

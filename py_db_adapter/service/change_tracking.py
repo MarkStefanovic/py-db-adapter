@@ -8,7 +8,7 @@ from py_db_adapter import domain
 
 __all__ = ("update_history_table",)
 
-logger = domain.root.getChild("change_tracking")
+logger = domain.root_logger.getChild("change_tracking")
 
 
 def update_history_table(

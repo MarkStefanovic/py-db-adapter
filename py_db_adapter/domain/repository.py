@@ -13,7 +13,7 @@ from py_db_adapter.domain import (
 
 __all__ = ("Repository",)
 
-logger = domain_logger.root.getChild("Repository")
+logger = domain_logger.root_logger.getChild("Repository")
 
 
 class Repository:

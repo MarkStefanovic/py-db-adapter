@@ -163,7 +163,7 @@ def pyodbc_inspect_table(
     pk = domain.PrimaryKey(
         schema_name=schema_name,
         table_name=table_name,
-        columns=pk_col_names,
+        columns=tuple(pk_col_names),
     )
     return domain.Table(
         schema_name=schema_name,

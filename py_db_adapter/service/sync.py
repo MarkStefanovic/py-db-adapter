@@ -10,7 +10,7 @@ from py_db_adapter.service.copy_table import copy_table
 __all__ = ("sync",)
 
 
-logger = domain.root.getChild("Datasource")
+logger = domain.root_logger.getChild("Datasource")
 
 
 def sync(
