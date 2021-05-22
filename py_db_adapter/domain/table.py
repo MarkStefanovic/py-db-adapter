@@ -60,6 +60,9 @@ class Table:
             primary_key=pk,
             table_name=f"{self.table_name}_history",
             columns=columns,
+            unique_constraints=frozenset(
+                {UniqueContraint(columns=(id_col.column_name, "valid_to"))}
+            ),
         )
 
     def column_by_name(self, /, column_name: str) -> Column:

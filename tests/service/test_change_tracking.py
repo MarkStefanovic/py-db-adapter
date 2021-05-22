@@ -41,10 +41,6 @@ def check_history_table_in_sync(cur: pyodbc.Cursor) -> None:
 
 
 def test_change_tracking_happy_path(pg_cursor: pyodbc.Cursor) -> None:
-    sql = "SELECT COUNT(*) FROM sales.customer"
-    original_rows = pg_cursor.execute(sql).fetchval()
-    assert original_rows > 0
-
     src_db_adapter = adapter.PostgresAdapter()
     dest_db_adapter = adapter.PostgresAdapter()
     src_table = adapter.inspect_table(
@@ -55,6 +51,7 @@ def test_change_tracking_happy_path(pg_cursor: pyodbc.Cursor) -> None:
         include_cols=None,
         cache_dir=None,
     )
+
     service.update_history_table(
         src_cur=pg_cursor,
         dest_cur=pg_cursor,
@@ -66,11 +63,36 @@ def test_change_tracking_happy_path(pg_cursor: pyodbc.Cursor) -> None:
     )
     check_history_table_in_sync(cur=pg_cursor)
 
-    # test after an update
-    sql = "UPDATE sales.customer SET customer_last_name = 'Smithers' WHERE customer_first_name = 'Steve'"
-    pg_cursor.execute(sql)
+
+def test_change_tracking_after_update(pg_cursor: pyodbc.Cursor) -> None:
+    src_db_adapter = adapter.PostgresAdapter()
+    dest_db_adapter = adapter.PostgresAdapter()
+    src_table = adapter.inspect_table(
+        cur=pg_cursor,
+        schema_name="sales",
+        table_name="customer",
+        pk_cols=None,
+        include_cols=None,
+        cache_dir=None,
+    )
+
+    pg_cursor.execute(
+        """
+            UPDATE sales.customer 
+            SET customer_last_name = 'Smithers' 
+            WHERE customer_first_name = 'Steve'
+        """
+    )
     pg_cursor.commit()
-    # TODO assert the sales.customer name was actually changed
+    result = pg_cursor.execute(
+        """
+            SELECT c.customer_last_name 
+            FROM sales.customer AS c
+            WHERE c.customer_first_name = 'Steve'
+        """
+    ).fetchval()
+    assert result == "Smithers"
+
     service.update_history_table(
         src_cur=pg_cursor,
         dest_cur=pg_cursor,
@@ -82,85 +104,118 @@ def test_change_tracking_happy_path(pg_cursor: pyodbc.Cursor) -> None:
     )
     check_history_table_in_sync(cur=pg_cursor)
 
+    pg_cursor.execute(
+        """
+            UPDATE sales.customer 
+            SET customer_last_name = 'Smalls' 
+            WHERE customer_first_name = 'Steve'
+        """
+    )
+    pg_cursor.commit()
+    service.update_history_table(
+        src_cur=pg_cursor,
+        dest_cur=pg_cursor,
+        src_db_adapter=src_db_adapter,
+        dest_db_adapter=dest_db_adapter,
+        src_table=src_table,
+        compare_cols=None,  # compare all columns
+        recreate=False,
+    )
+    check_history_table_in_sync(cur=pg_cursor)
+    result = pg_cursor.execute(
+        """
+            SELECT h.customer_last_name 
+            FROM sales.customer_history AS h
+            WHERE 
+                h.customer_first_name = 'Steve'
+                AND h.valid_to = '9999-12-31'
+        """
+    ).fetchall()
+    assert result is not None
+    assert len(result) == 1
+    assert result[0].customer_last_name == "Smalls"
 
-#     with ds:
-#         ds.update_history_table(recreate=False)
-#         ds.commit()
-#
-#     with pyodbc.connect(postgres_pyodbc_db_uri) as con:
-#         with con.cursor() as cur:
-#             sql = "SELECT * FROM sales.customer_history WHERE customer_first_name = 'Steve'"
-#             result = cur.execute(sql).fetchall()
-#             updated_rows = [
-#                 dict(zip((col[0] for col in cur.description), row)) for row in result
-#             ]
-#     assert len(updated_rows) == 2, "failed after 1st update"
-#     assert sum(row["valid_to"] == datetime.datetime(9999, 12, 31) for row in updated_rows) == 1
-#     original_row = next(row for row in updated_rows if row["valid_to"] != datetime.datetime(9999, 12, 31))
-#     new_row = next(row for row in updated_rows if row["valid_to"] == datetime.datetime(9999, 12, 31))
-#     assert original_row["valid_to"] + datetime.timedelta(microseconds=1) == new_row["valid_from"]
-#
-#     # 2nd update
-#     with pyodbc.connect(postgres_pyodbc_db_uri) as con:
-#         with con.cursor() as cur:
-#             sql = "UPDATE sales.customer SET customer_last_name = 'Smalls' WHERE customer_first_name = 'Steve'"
-#             cur.execute(sql)
-#             cur.commit()
-#
-#     with ds:
-#         ds.update_history_table(recreate=False)
-#         ds.commit()
-#
-#     with pyodbc.connect(postgres_pyodbc_db_uri) as con:
-#         with con.cursor() as cur:
-#             sql = "SELECT * FROM sales.customer_history WHERE customer_first_name = 'Steve'"
-#             result = cur.execute(sql).fetchall()
-#             updated_rows = [
-#                 dict(zip((col[0] for col in cur.description), row)) for row in result
-#             ]
-#     assert len(updated_rows) == 3
-#     assert sum(row["valid_to"] == datetime.datetime(9999, 12, 31) for row in updated_rows) == 1
-#     new_row = next(row for row in updated_rows if row["valid_to"] == datetime.datetime(9999, 12, 31))
-#     assert new_row["customer_last_name"] == "Smalls"
-#     # fmt: on
-#
-#
-# def test_update_history_after_source_rows_deleted(
-#     cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str
-# ) -> None:
-#     ds = pda.postgres_pyodbc_datasource(
-#         db_name="test_db",
-#         db_uri=postgres_pyodbc_db_uri,
-#         cache_dir=cache_dir,
-#         schema_name="sales",
-#         table_name="customer",
-#         compare_cols=None,
-#         custom_pk_cols=None,
-#         max_batch_size=1000,
-#         read_only=False,
-#     )
-#     with ds:
-#         ds.update_history_table(recreate=False)
-#         ds.commit()
-#
-#     with pyodbc.connect(postgres_pyodbc_db_uri) as con:
-#         with con.cursor() as cur:
-#             sql = "DELETE FROM sales.customer WHERE customer_first_name = 'Dan'"
-#             cur.execute(sql)
-#             cur.commit()
-#
-#     with ds:
-#         ds.update_history_table(recreate=False)
-#         ds.commit()
-#
-#     # fmt: off
-#     with pyodbc.connect(postgres_pyodbc_db_uri) as con:
-#         with con.cursor() as cur:
-#             sql = "SELECT * FROM sales.customer_history WHERE customer_first_name = 'Dan'"
-#             result = cur.execute(sql).fetchall()
-#             deleted_rows = [
-#                 dict(zip((col[0] for col in cur.description), row)) for row in result
-#             ]
-#     assert len(deleted_rows) == 1
-#     assert sum(row["valid_to"] == datetime.datetime(9999, 12, 31) for row in deleted_rows) == 0
-#     # fmt: on
+
+def test_change_tracking_after_delete(pg_cursor: pyodbc.Cursor) -> None:
+    src_db_adapter = adapter.PostgresAdapter()
+    dest_db_adapter = adapter.PostgresAdapter()
+    src_table = adapter.inspect_table(
+        cur=pg_cursor,
+        schema_name="sales",
+        table_name="customer",
+        pk_cols=None,
+        include_cols=None,
+        cache_dir=None,
+    )
+
+    pg_cursor.execute("DELETE FROM sales.customer WHERE customer_first_name = 'Dan'")
+    result = pg_cursor.execute(
+        """
+            SELECT 1 
+            FROM sales.customer AS c
+            WHERE c.customer_first_name = 'Dan'
+        """
+    ).fetchone()
+    assert result is None
+
+    service.update_history_table(
+        src_cur=pg_cursor,
+        dest_cur=pg_cursor,
+        src_db_adapter=src_db_adapter,
+        dest_db_adapter=dest_db_adapter,
+        src_table=src_table,
+        compare_cols=None,  # compare all columns
+        recreate=False,
+    )
+    result = pg_cursor.execute(
+        """
+        SELECT 1 
+        FROM sales.customer_history AS h
+        WHERE 
+            h.customer_first_name = 'Dan' 
+            AND h.valid_to = '9999-12-31'
+    """
+    ).fetchone()
+    assert result is None
+
+    pg_cursor.execute(
+        """
+        INSERT INTO sales.customer (
+            customer_first_name
+        ,   customer_last_name
+        ,   date_added
+        )
+        VALUES (
+            'Zardon'
+        ,   'Zarbos'
+        ,   CAST('2010-01-02 03:04:05' AS TIMESTAMP)
+        )
+    """
+    )
+    result = pg_cursor.execute(
+        """
+        SELECT COUNT(*) 
+        FROM sales.customer 
+        WHERE customer_first_name = 'Zardon'
+    """
+    ).fetchval()
+    assert result == 1
+    service.update_history_table(
+        src_cur=pg_cursor,
+        dest_cur=pg_cursor,
+        src_db_adapter=src_db_adapter,
+        dest_db_adapter=dest_db_adapter,
+        src_table=src_table,
+        compare_cols=None,  # compare all columns
+        recreate=False,
+    )
+    result = pg_cursor.execute(
+        """
+        SELECT COUNT(*) 
+        FROM sales.customer_history AS h
+        WHERE 
+            h.customer_first_name = 'Zardon'
+            AND h.valid_to = '9999-12-31'
+    """
+    ).fetchval()
+    assert result == 1

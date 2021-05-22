@@ -60,5 +60,9 @@ def pg_cursor(cache_dir: pathlib.Path) -> typing.Generator[pyodbc.Cursor, None, 
     with pyodbc.connect(db_uri) as con:
         set_up_db(con)
         with con.cursor() as cur:
+            original_rows = cur.execute(
+                "SELECT COUNT(*) FROM sales.customer"
+            ).fetchval()
+            assert original_rows == 9
             yield cur
         tear_down_db(con)
