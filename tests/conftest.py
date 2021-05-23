@@ -11,9 +11,28 @@ from py_db_adapter import domain
 dotenv.load_dotenv(dotenv.find_dotenv())
 
 
+@pytest.fixture(scope="function")
+def pg_cursor(cache_dir: pathlib.Path) -> typing.Generator[pyodbc.Cursor, None, None]:
+    clear_cache(cache_dir)
+    db_uri = os.environ["PYODBC_URI"]
+    with pyodbc.connect(db_uri) as con:
+        set_up_db(con)
+        with con.cursor() as cur:
+            original_rows = cur.execute(
+                "SELECT COUNT(*) FROM sales.customer"
+            ).fetchval()
+            assert original_rows == 9
+            yield cur
+        tear_down_db(con)
+
+
 @pytest.fixture(scope="session")
 def cache_dir() -> pathlib.Path:
-    return pathlib.Path(os.environ["CACHE_DIR"])
+    fp = pathlib.Path(os.environ["CACHE_DIR"])
+    assert fp.exists()
+    clear_cache(fp)
+    yield fp
+    clear_cache(fp)
 
 
 def read_sql(fp: pathlib.Path, /) -> typing.List[str]:
@@ -47,22 +66,8 @@ def tear_down_db(con: pyodbc.Connection, /) -> None:
 
 
 def clear_cache(cache_dir: pathlib.Path, /) -> None:
+    print("Clearing cache...")
     if cache_dir.exists():
         for fp in cache_dir.iterdir():
             if fp.suffix == ".p":
                 fp.unlink()
-
-
-@pytest.fixture(scope="function")
-def pg_cursor(cache_dir: pathlib.Path) -> typing.Generator[pyodbc.Cursor, None, None]:
-    clear_cache(cache_dir)
-    db_uri = os.environ["PYODBC_URI"]
-    with pyodbc.connect(db_uri) as con:
-        set_up_db(con)
-        with con.cursor() as cur:
-            original_rows = cur.execute(
-                "SELECT COUNT(*) FROM sales.customer"
-            ).fetchval()
-            assert original_rows == 9
-            yield cur
-        tear_down_db(con)
