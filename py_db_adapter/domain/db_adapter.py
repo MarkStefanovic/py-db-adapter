@@ -67,12 +67,12 @@ class DbAdapter(abc.ABC):
         if self.table_exists(
             cur=cur, table_name=table.table_name, schema_name=table.schema_name
         ):
-            return True
+            return False
         else:
             sql = self._sql_adapter.definition(table)
             cur.execute(sql)
             logger.info(f"{table.schema_name}.{table.table_name} was created.")
-            return False
+            return True
 
     def delete_rows(
         self,
