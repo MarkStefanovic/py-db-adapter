@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import dataclasses
 import typing
 
@@ -8,6 +10,9 @@ class Index:
     table_name: str
     columns: typing.List[str]
     unique: bool
+
+    def copy(self, *, schema_name: typing.Optional[str], table_name: str) -> Index:
+        return dataclasses.replace(self, schema_name=schema_name, table_name=table_name)
 
     def definition(self, *, wrapper: typing.Callable[[str], str]) -> str:
         col_csv = ", ".join(wrapper(col) for col in self.columns)

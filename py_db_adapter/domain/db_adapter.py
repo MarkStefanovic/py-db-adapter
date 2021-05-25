@@ -69,7 +69,7 @@ class DbAdapter(abc.ABC):
         ):
             return False
         else:
-            sql = self._sql_adapter.definition(table)
+            sql = self._sql_adapter.table_definition(table)
             cur.execute(sql)
             logger.info(f"{table.schema_name}.{table.table_name} was created.")
             return True
@@ -82,7 +82,7 @@ class DbAdapter(abc.ABC):
         rows: domain_rows.Rows,
         batch_size: int,
     ) -> None:
-        sql = self._sql_adapter.delete(
+        sql = self._sql_adapter.delete_rows(
             schema_name=table.schema_name,
             table_name=table.table_name,
             pk_cols=set(table.primary_key.columns),
@@ -100,7 +100,9 @@ class DbAdapter(abc.ABC):
         schema_name: typing.Optional[str] = None,
     ) -> bool:
         if self.table_exists(cur=cur, table_name=table_name, schema_name=schema_name):
-            sql = self._sql_adapter.drop(schema_name=schema_name, table_name=table_name)
+            sql = self._sql_adapter.drop_table(
+                schema_name=schema_name, table_name=table_name
+            )
             cur.execute(sql=sql, params=None)
             logger.info(f"{schema_name}.{table_name} was dropped.")
             return True
@@ -173,7 +175,7 @@ class DbAdapter(abc.ABC):
         table: domain_table.Table,
         columns: typing.Optional[typing.Set[str]] = None,
     ) -> domain_rows.Rows:
-        sql = self._sql_adapter.select_all(
+        sql = self._sql_adapter.select_all_rows(
             schema_name=table.schema_name,
             table_name=table.table_name,
             columns=columns,
@@ -187,7 +189,7 @@ class DbAdapter(abc.ABC):
         table: domain_table.Table,
         predicate: sql_predicate.SqlPredicate,
     ) -> domain_rows.Rows:
-        sql = self._sql_adapter.select_where(table=table, predicate=predicate)
+        sql = self._sql_adapter.select_rows_where(table=table, predicate=predicate)
         return fetch_rows(cur=cur, sql=sql, params=None)
 
     def table_keys(
@@ -202,7 +204,7 @@ class DbAdapter(abc.ABC):
             if additional_cols
             else set(table.primary_key.columns)
         )
-        sql = self._sql_adapter.select_distinct(
+        sql = self._sql_adapter.select_distinct_rows(
             schema_name=table.schema_name,
             table_name=table.table_name,
             columns=cols,
@@ -215,7 +217,9 @@ class DbAdapter(abc.ABC):
     def truncate_table(
         self, *, cur: pyodbc.Cursor, schema_name: typing.Optional[str], table_name: str
     ) -> None:
-        sql = self._sql_adapter.truncate(schema_name=schema_name, table_name=table_name)
+        sql = self._sql_adapter.truncate_table(
+            schema_name=schema_name, table_name=table_name
+        )
         cur.execute(sql=sql)
 
     def update_table(
@@ -227,7 +231,7 @@ class DbAdapter(abc.ABC):
         batch_size: int,
     ) -> None:
         for batch in rows.batches(batch_size):
-            sql = self._sql_adapter.update(
+            sql = self._sql_adapter.update_rows(
                 schema_name=table.schema_name,
                 table_name=table.table_name,
                 pk_cols=set(table.primary_key.columns),

@@ -44,7 +44,7 @@ def test_create_table_sql(pg_cursor: pyodbc.Cursor) -> None:
         table_name="employee",
         schema_name="hr",
     )
-    actual = sql_adapter.definition(table)
+    actual = sql_adapter.table_definition(table)
     expected = (
         "CREATE TABLE hr.employee (active BOOL NOT NULL, date_added TIMESTAMP NOT NULL, date_updated TIMESTAMP NULL, "
         "employee_dependents BIGINT NOT NULL, employee_dob DATE NOT NULL, employee_gender VARCHAR(255) NOT NULL, "
@@ -58,7 +58,7 @@ def test_create_table_sql(pg_cursor: pyodbc.Cursor) -> None:
 def test_drop_table_sql() -> None:
     sql_adapter = pda.PostgreSQLAdapter()
     assert (
-        sql_adapter.drop(schema_name="hr", table_name="employee")
+        sql_adapter.drop_table(schema_name="hr", table_name="employee")
         == "DROP TABLE hr.employee"
     )
 
@@ -74,7 +74,7 @@ def test_row_count_sql() -> None:
 def test_truncate_table_sql() -> None:
     sql_adapter = pda.PostgreSQLAdapter()
     assert (
-        sql_adapter.truncate(schema_name="hr", table_name="employee")
+        sql_adapter.truncate_table(schema_name="hr", table_name="employee")
         == "TRUNCATE TABLE hr.employee"
     )
 
@@ -111,7 +111,7 @@ def test_select_where_method() -> None:
         ),
     )
     sql_adapter = pda.PostgreSQLAdapter()
-    sql = sql_adapter.select_where(
+    sql = sql_adapter.select_rows_where(
         table=tbl,
         predicate=pda.SqlPredicate(
             column_name="test_name",

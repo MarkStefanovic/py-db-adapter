@@ -607,7 +607,7 @@ class HiveSQLAdapter(sql_adapter.SqlAdapter):
             col=column, wrapper=self.wrap
         )
 
-    def drop(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
+    def drop_table(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
         raise NotImplementedError
 
     def table_exists(
@@ -616,7 +616,9 @@ class HiveSQLAdapter(sql_adapter.SqlAdapter):
         # TODO
         raise NotImplementedError
 
-    def truncate(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
+    def truncate_table(
+        self, *, schema_name: typing.Optional[str], table_name: str
+    ) -> str:
         raise NotImplementedError
 
     def wrap(self, obj_name: str) -> str:

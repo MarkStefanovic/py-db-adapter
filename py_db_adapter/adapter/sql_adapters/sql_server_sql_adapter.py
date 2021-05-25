@@ -277,7 +277,9 @@ class SqlServerSQLAdapter(sql_adapter.SqlAdapter):
             f"SELECT CASE WHEN OBJECT_ID('{full_table_name}') IS NULL THEN 0 ELSE 1 END"
         )
 
-    def truncate(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
+    def truncate_table(
+        self, *, schema_name: typing.Optional[str], table_name: str
+    ) -> str:
         full_table_name = self.full_table_name(
             schema_name=schema_name, table_name=table_name
         )

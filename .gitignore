@@ -147,3 +147,6 @@ poetry.lock
 Pipfile.lock
 .env
 poetry.toml
+*.cache
+TODO.md
+NOTES.md

@@ -27,7 +27,7 @@ def pg_cursor(cache_dir: pathlib.Path) -> typing.Generator[pyodbc.Cursor, None, 
 
 
 @pytest.fixture(scope="session")
-def cache_dir() -> pathlib.Path:
+def cache_dir() -> typing.Generator[pathlib.Path, None, None]:
     fp = pathlib.Path(os.environ["CACHE_DIR"])
     assert fp.exists()
     clear_cache(fp)

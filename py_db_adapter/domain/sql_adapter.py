@@ -80,7 +80,7 @@ class SqlAdapter(abc.ABC):
     ) -> domain_column_adapters.TextColumnSqlAdapter:
         raise NotImplementedError
 
-    def definition(self, /, table: domain_table.Table) -> str:
+    def table_definition(self, /, table: domain_table.Table) -> str:
         adapters = sorted(
             (self._map_column_to_adapter(col) for col in table.columns),
             key=lambda c: c.column_metadata.column_name,
@@ -97,7 +97,7 @@ class SqlAdapter(abc.ABC):
         pk = table.primary_key.definition(wrapper=self.wrap)
         return f"CREATE TABLE {full_table_name} ({col_csv}{uq_constraints}, {pk})"
 
-    def delete(
+    def delete_rows(
         self,
         *,
         schema_name: typing.Optional[str],
@@ -116,7 +116,7 @@ class SqlAdapter(abc.ABC):
         )
         return f"DELETE FROM {full_table_name} WHERE {where_clause}"
 
-    def drop(
+    def drop_table(
         self,
         *,
         schema_name: typing.Optional[str],
@@ -198,19 +198,6 @@ class SqlAdapter(abc.ABC):
         else:
             return f"{self.wrap(schema_name)}.{self.wrap(table_name)}"
 
-    def _map_column_to_adapter(
-        self, /, col: domain_column.Column
-    ) -> domain_column_adapter.ColumnSqlAdapter[typing.Any]:
-        return {  # type: ignore
-            data_types.DataType.Bool: self.create_boolean_column,
-            data_types.DataType.Date: self.create_date_column,
-            data_types.DataType.DateTime: self.create_datetime_column,
-            data_types.DataType.Decimal: self.create_decimal_column,
-            data_types.DataType.Float: self.create_float_column,
-            data_types.DataType.Int: self.create_integer_column,
-            data_types.DataType.Text: self.create_text_column,
-        }[col.data_type](col)
-
     @property
     def max_float_literal_decimal_places(self) -> int:
         return self._max_float_literal_decimal_places
@@ -230,7 +217,7 @@ class SqlAdapter(abc.ABC):
         )
         return f"SELECT COUNT(*) AS row_count FROM {full_table_name}"
 
-    def select_all(
+    def select_all_rows(
         self,
         *,
         schema_name: typing.Optional[str],
@@ -246,7 +233,7 @@ class SqlAdapter(abc.ABC):
         else:
             return f"SELECT * FROM {full_table_name}"
 
-    def select_distinct(
+    def select_distinct_rows(
         self,
         *,
         schema_name: typing.Optional[str],
@@ -259,7 +246,7 @@ class SqlAdapter(abc.ABC):
         )
         return f"SELECT DISTINCT {col_names_csv} FROM {full_table_name}"
 
-    def select_where(
+    def select_rows_where(
         self, *, table: domain_table.Table, predicate: sql_predicate.SqlPredicate
     ) -> str:
         col_names_csv = ",".join(self.wrap(col) for col in sorted(table.column_names))
@@ -287,13 +274,15 @@ class SqlAdapter(abc.ABC):
     ) -> str:
         raise NotImplementedError
 
-    def truncate(self, *, schema_name: typing.Optional[str], table_name: str) -> str:
+    def truncate_table(
+        self, *, schema_name: typing.Optional[str], table_name: str
+    ) -> str:
         full_table_name = self.full_table_name(
             schema_name=schema_name, table_name=table_name
         )
         return f"DELETE FROM {full_table_name}"
 
-    def update(
+    def update_rows(
         self,
         *,
         schema_name: typing.Optional[str],
@@ -317,3 +306,16 @@ class SqlAdapter(abc.ABC):
     @abc.abstractmethod
     def wrap(self, obj_name: str) -> str:
         raise NotImplementedError
+
+    def _map_column_to_adapter(
+        self, /, col: domain_column.Column
+    ) -> domain_column_adapter.ColumnSqlAdapter[typing.Any]:
+        return {  # type: ignore
+            data_types.DataType.Bool: self.create_boolean_column,
+            data_types.DataType.Date: self.create_date_column,
+            data_types.DataType.DateTime: self.create_datetime_column,
+            data_types.DataType.Decimal: self.create_decimal_column,
+            data_types.DataType.Float: self.create_float_column,
+            data_types.DataType.Int: self.create_integer_column,
+            data_types.DataType.Text: self.create_text_column,
+        }[col.data_type](col)
