@@ -226,12 +226,24 @@ def get_row_count(
     dest_cur: pyodbc.Cursor,
     dest_schema_name: typing.Optional[str],
     dest_table_name: str,
+    recreate: bool = False,
 ) -> int:
     if cache_dir:
         fp = cache_dir / f"{dest_table_name}.rows.p"
-        if fp.exists():
-            with fp.open("rb") as fh:
-                return pickle.load(fh)
+        if fp.exists() and recreate is False:
+            try:
+                with fp.open("rb") as fh:
+                    return pickle.load(fh)
+            except Exception as e:
+                logger.exception(e)
+                return get_row_count(
+                    cache_dir=cache_dir,
+                    dest_db_adapter=dest_db_adapter,
+                    dest_cur=dest_cur,
+                    dest_schema_name=dest_schema_name,
+                    dest_table_name=dest_table_name,
+                    recreate=True,
+                )
         else:
             rows = dest_db_adapter.row_count(
                 cur=dest_cur,
