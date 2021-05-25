@@ -24,25 +24,6 @@ logger = domain_logger.root_logger.getChild("DbAdapter")
 class DbAdapter(abc.ABC):
     """Intersection of DbConnection and SqlAdapter"""
 
-    @property
-    @abc.abstractmethod
-    def _sql_adapter(self) -> sql_adapter.SqlAdapter:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def table_exists(
-        self,
-        *,
-        cur: pyodbc.Cursor,
-        table_name: str,
-        schema_name: typing.Optional[str] = None,
-    ) -> bool:
-        sql = self._sql_adapter.table_exists(
-            schema_name=schema_name, table_name=table_name
-        )
-        result = cur.execute(sql).fetchval()
-        return True if result else False
-
     def add_rows(
         self,
         *,
@@ -107,6 +88,10 @@ class DbAdapter(abc.ABC):
             return True
         else:
             return False
+
+    @property
+    def fast_executemany_available(self) -> bool:
+        return False
 
     def fast_row_count(
         self,
@@ -191,6 +176,20 @@ class DbAdapter(abc.ABC):
         sql = self._sql_adapter.select_rows_where(table=table, predicate=predicate)
         return fetch_rows(cur=cur, sql=sql, params=None)
 
+    @abc.abstractmethod
+    def table_exists(
+        self,
+        *,
+        cur: pyodbc.Cursor,
+        table_name: str,
+        schema_name: typing.Optional[str] = None,
+    ) -> bool:
+        sql = self._sql_adapter.table_exists(
+            schema_name=schema_name, table_name=table_name
+        )
+        result = cur.execute(sql).fetchval()
+        return True if result else False
+
     def table_keys(
         self,
         *,
@@ -221,7 +220,7 @@ class DbAdapter(abc.ABC):
         )
         cur.execute(sql=sql)
 
-    def update_table(
+    def update_rows(
         self,
         *,
         cur: pyodbc.Cursor,
@@ -249,6 +248,11 @@ class DbAdapter(abc.ABC):
                 tuple(row[k] for k in param_order) for row in unordered_params
             ]
             cur.executemany(sql, ordered_params)
+
+    @property
+    @abc.abstractmethod
+    def _sql_adapter(self) -> sql_adapter.SqlAdapter:
+        raise NotImplementedError
 
 
 def fetch_rows(

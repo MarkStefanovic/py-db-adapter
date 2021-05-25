@@ -127,7 +127,7 @@ class Repository:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
         else:
-            self._db.update_table(
+            self._db.update_rows(
                 cur=cur, table=self._table, rows=rows, batch_size=self._batch_size
             )
 

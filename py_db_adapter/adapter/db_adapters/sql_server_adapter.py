@@ -18,6 +18,10 @@ class SqlServerAdapter(domain.DbAdapter):
     def _sql_adapter(self) -> domain.SqlAdapter:
         return self.__sql_adapter
 
+    @property
+    def fast_executemany_available(self) -> bool:
+        return True
+
     def table_exists(
         self,
         *,

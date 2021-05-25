@@ -10,7 +10,7 @@ from py_db_adapter.service.copy_table import copy_table
 __all__ = ("sync",)
 
 
-logger = domain.root_logger.getChild("Datasource")
+logger = domain.root_logger.getChild("sync")
 
 
 def sync(
@@ -29,12 +29,13 @@ def sync(
     compare_cols: typing.Optional[typing.Set[str]] = None,  # None = compare on all common cols
     recreate: bool = False,
     cache_dir: typing.Optional[pathlib.Path] = None,
-    fast_executemany: bool = True,
     skip_if_row_counts_match: bool = False,
     # fmt: on
 ) -> typing.Dict[str, int]:
-    if fast_executemany:
+    if src_db_adapter.fast_executemany_available:
         src_cur.fast_executemany = True
+
+    if dest_db_adapter.fast_executemany_available:
         dest_cur.fast_executemany = True
 
     if skip_if_row_counts_match:
