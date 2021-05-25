@@ -230,7 +230,7 @@ def get_row_count(
     if cache_dir:
         fp = cache_dir / f"{dest_table_name}.rows.p"
         if fp.exists():
-            with fp.open("wb") as fh:
+            with fp.open("rb") as fh:
                 return pickle.load(fh)
         else:
             rows = dest_db_adapter.row_count(
