@@ -60,7 +60,6 @@ class DbAdapter(abc.ABC):
                 rows=batch,
             )
             params = batch.as_tuples()
-            print(f"{sql=}, {params=}")
             cur.executemany(sql, params)
 
     def create_table(self, *, cur: pyodbc.Cursor, table: domain_table.Table) -> bool:
