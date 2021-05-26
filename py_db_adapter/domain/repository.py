@@ -123,12 +123,22 @@ class Repository:
                 table_name=self._table.table_name,
             )
 
-    def update(self, *, cur: pyodbc.Cursor, rows: domain_rows.Rows) -> None:
+    def update(
+        self,
+        *,
+        cur: pyodbc.Cursor,
+        rows: domain_rows.Rows,
+        columns: typing.Optional[typing.Set[str]] = None,
+    ) -> None:
         if self._read_only:
             raise exceptions.DatabaseIsReadOnly()
         else:
             self._db.update_rows(
-                cur=cur, table=self._table, rows=rows, batch_size=self._batch_size
+                cur=cur,
+                table=self._table,
+                rows=rows,
+                batch_size=self._batch_size,
+                column_names=columns,
             )
 
     def where(

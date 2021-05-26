@@ -188,7 +188,7 @@ def sync(
                     cols=include_cols,
                     # cols=src_table.column_names,
                 )
-                dest_repo.update(cur=dest_cur, rows=updated_rows)
+                dest_repo.update(cur=dest_cur, rows=updated_rows, columns=include_cols)
                 logger.info(f"Updated {rows_updated} rows on [{src_table_name}].")
             result = {
                 "added": rows_added,

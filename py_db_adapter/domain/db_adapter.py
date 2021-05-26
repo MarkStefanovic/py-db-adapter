@@ -227,13 +227,16 @@ class DbAdapter(abc.ABC):
         table: domain_table.Table,
         rows: domain_rows.Rows,
         batch_size: int,
+        column_names: typing.Optional[typing.Set[str]] = None,
     ) -> None:
+        if column_names is None:
+            column_names = table.column_names
         for batch in rows.batches(batch_size):
             sql = self._sql_adapter.update_rows(
                 schema_name=table.schema_name,
                 table_name=table.table_name,
                 pk_cols=set(table.primary_key.columns),
-                column_names=table.column_names,
+                column_names=column_names,
                 parameter_placeholder=parameter_placeholder,
             )
             pk_cols = sorted(set(table.primary_key.columns))
