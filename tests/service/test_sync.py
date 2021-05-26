@@ -36,7 +36,6 @@ def test_sync_with_explicit_cols(pg_cursor: pyodbc.Cursor) -> None:
         dest_table_name="customer2",
         pk_cols=["customer_id"],
         compare_cols={"customer_first_name", "customer_last_name"},
-        fast_executemany=True,
     )
     check_customer2_table_in_sync(cur=pg_cursor)
 
@@ -56,7 +55,6 @@ def test_sync_with_explicit_cols(pg_cursor: pyodbc.Cursor) -> None:
         dest_table_name="customer2",
         pk_cols=["customer_id"],
         compare_cols={"customer_first_name", "customer_last_name"},
-        fast_executemany=True,
     )
     check_customer2_table_in_sync(cur=pg_cursor)
 
@@ -74,7 +72,6 @@ def test_sync_with_explicit_cols(pg_cursor: pyodbc.Cursor) -> None:
         dest_table_name="customer2",
         pk_cols=["customer_id"],
         compare_cols={"customer_first_name", "customer_last_name"},
-        fast_executemany=True,
     )
     check_customer2_table_in_sync(cur=pg_cursor)
 

@@ -171,7 +171,10 @@ def sync(
         else:
             if rows_added := changes.rows_added.row_count:
                 new_rows = src_repo.fetch_rows_by_primary_key_values(
-                    cur=src_cur, rows=changes.rows_added, cols=src_table.column_names
+                    cur=src_cur,
+                    rows=changes.rows_added,
+                    cols=include_cols,
+                    # cols=src_table.column_names,
                 )
                 dest_repo.add(cur=dest_cur, rows=new_rows)
                 logger.info(f"Added {rows_added} rows to [{src_table_name}].")
@@ -180,7 +183,10 @@ def sync(
                 logger.info(f"Deleted {rows_deleted} rows from [{src_table_name}].")
             if rows_updated := changes.rows_updated.row_count:
                 updated_rows = src_repo.fetch_rows_by_primary_key_values(
-                    cur=src_cur, rows=changes.rows_updated, cols=src_table.column_names
+                    cur=src_cur,
+                    rows=changes.rows_updated,
+                    cols=include_cols,
+                    # cols=src_table.column_names,
                 )
                 dest_repo.update(cur=dest_cur, rows=updated_rows)
                 logger.info(f"Updated {rows_updated} rows on [{src_table_name}].")
