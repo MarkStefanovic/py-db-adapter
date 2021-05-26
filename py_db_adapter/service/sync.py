@@ -30,6 +30,7 @@ def sync(
     recreate: bool = False,
     cache_dir: typing.Optional[pathlib.Path] = None,
     skip_if_row_counts_match: bool = False,
+    batch_size: int = 1000,
     # fmt: on
 ) -> typing.Dict[str, int]:
     if src_db_adapter.fast_executemany_available:
@@ -100,13 +101,13 @@ def sync(
         db=src_db_adapter,
         table=src_table,
         change_tracking_columns=compare_cols,
-        batch_size=1_000,
+        batch_size=batch_size,
     )
     dest_repo = domain.Repository(
         db=dest_db_adapter,
         table=dest_table,
         change_tracking_columns=compare_cols,
-        batch_size=1_000,
+        batch_size=batch_size,
     )
 
     if cache_dir:
