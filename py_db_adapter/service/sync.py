@@ -111,7 +111,10 @@ def sync(
     )
 
     if cache_dir:
-        fp = cache_dir / f"{dest_table.table_name}.dest-keys.p"
+        fp = (
+            cache_dir
+            / f"{dest_table.schema_name or '_'}.{dest_table.table_name}.dest-keys.p"
+        )
         if fp.exists():
             dest_rows = pickle.load(open(file=fp, mode="rb"))
         else:
@@ -130,11 +133,13 @@ def sync(
             dest_keys = src_rows.subset(pks | compare_cols)
             dump_dest_keys(
                 cache_dir=cache_dir,
+                schema_name=dest_schema_name,
                 table_name=dest_table_name,
                 dest_keys=dest_keys,
             )
             dump_row_count(
                 cache_dir=cache_dir,
+                schema_name=dest_schema_name,
                 table_name=dest_table_name,
                 rows=src_rows.row_count,
             )
@@ -201,11 +206,13 @@ def sync(
         if cache_dir:
             dump_dest_keys(
                 cache_dir=cache_dir,
+                schema_name=dest_schema_name,
                 table_name=dest_table_name,
                 dest_keys=src_keys,
             )
             dump_row_count(
                 cache_dir=cache_dir,
+                schema_name=dest_schema_name,
                 table_name=dest_table_name,
                 rows=src_keys.row_count,
             )
@@ -214,15 +221,25 @@ def sync(
 
 
 def dump_dest_keys(
-    *, cache_dir: pathlib.Path, table_name: str, dest_keys: domain.Rows
+    *,
+    cache_dir: pathlib.Path,
+    schema_name: typing.Optional[str],
+    table_name: str,
+    dest_keys: domain.Rows,
 ) -> None:
-    fp = cache_dir / f"{table_name}.dest-keys.p"
+    fp = cache_dir / f"{schema_name or '_'}.{table_name}.dest-keys.p"
     with fp.open("wb") as fh:
         pickle.dump(dest_keys, fh)
 
 
-def dump_row_count(*, cache_dir: pathlib.Path, table_name: str, rows: int) -> None:
-    fp = cache_dir / f"{table_name}.rows.p"
+def dump_row_count(
+    *,
+    cache_dir: pathlib.Path,
+    schema_name: typing.Optional[str],
+    table_name: str,
+    rows: int,
+) -> None:
+    fp = cache_dir / f"{schema_name or '_'}.{table_name}.rows.p"
     with fp.open("wb") as fh:
         pickle.dump(rows, fh)
 
@@ -237,7 +254,7 @@ def get_row_count(
     recreate: bool = False,
 ) -> int:
     if cache_dir:
-        fp = cache_dir / f"{dest_table_name}.rows.p"
+        fp = cache_dir / f"{dest_schema_name or '_'}.{dest_table_name}.rows.p"
         if fp.exists() and recreate is False:
             try:
                 with fp.open("rb") as fh:
@@ -260,6 +277,7 @@ def get_row_count(
             )
             dump_row_count(
                 cache_dir=cache_dir,
+                schema_name=dest_schema_name,
                 table_name=dest_table_name,
                 rows=rows,
             )
