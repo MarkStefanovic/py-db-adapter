@@ -241,9 +241,7 @@ class DbAdapter(abc.ABC):
             )
             pk_cols = sorted(set(table.primary_key.columns))
             non_pk_cols = sorted(
-                col
-                for col in table.column_names
-                if col not in table.primary_key.columns
+                col for col in column_names if col not in table.primary_key.columns
             )
             unordered_params = batch.as_dicts()
             param_order = non_pk_cols + pk_cols
