@@ -5,6 +5,7 @@ import typing
 
 import pyodbc
 
+import py_db_adapter.domain.row_diff
 import py_db_adapter.domain.rows
 from py_db_adapter import domain
 
@@ -62,7 +63,7 @@ def update_history_table(
     )
 
     src_key_cols = set(src_table.primary_key.columns)
-    changes = py_db_adapter.domain.rows.RowDiff(
+    changes = py_db_adapter.domain.compare_rows(
         key_cols=src_key_cols,
         compare_cols=compare_cols or src_table.non_pk_column_names,
         src_rows=current_state,
@@ -153,7 +154,7 @@ def get_changes(
     table: domain.Table,
     compare_cols: typing.Optional[typing.Set[str]] = None,
     cache_dir: typing.Optional[pathlib.Path] = None,
-) -> domain.RowDiff:
+) -> py_db_adapter.domain.row_diff.RowDiff:
     prior_state = get_prior_state(
         hist_cur=hist_cur,
         hist_db_adapter=hist_db_adapter,
@@ -173,7 +174,7 @@ def get_changes(
             table_name=table.table_name,
             current_rows=current_state,
         )
-    return py_db_adapter.domain.rows.RowDiff(
+    return py_db_adapter.domain.compare_rows(
         key_cols=set(table.primary_key.columns),
         compare_cols=compare_cols or table.non_pk_column_names,
         src_rows=current_state,

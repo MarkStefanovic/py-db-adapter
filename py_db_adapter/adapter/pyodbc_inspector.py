@@ -13,7 +13,10 @@ import pyodbc
 
 from py_db_adapter import domain
 
-__all__ = ("inspect_table",)
+__all__ = (
+    "get_primary_key_cols_for_table",
+    "inspect_table",
+)
 
 
 def inspect_table(
@@ -146,7 +149,7 @@ def pyodbc_inspect_table(
     if custom_pk_cols:
         pk_col_names = custom_pk_cols
     else:
-        pk_col_names = _inspect_pks(
+        pk_col_names = get_primary_key_cols_for_table(
             cur=cur, table_name=table_name, schema_name=schema_name
         )
 
@@ -314,7 +317,7 @@ def get_scale(row: pyodbc.Row, /) -> typing.Optional[int]:
     return None
 
 
-def _inspect_pks(
+def get_primary_key_cols_for_table(
     cur: pyodbc.Cursor, table_name: str, schema_name: typing.Optional[str]
 ) -> typing.List[str]:
     return [

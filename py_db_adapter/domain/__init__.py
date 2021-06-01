@@ -2,11 +2,13 @@ from py_db_adapter.domain import exceptions
 from py_db_adapter.domain.column import *
 from py_db_adapter.domain.column_adapter import *
 from py_db_adapter.domain.column_adapters import *
+from py_db_adapter.domain.compare_rows import *
 from py_db_adapter.domain.data_types import *
 from py_db_adapter.domain.db_adapter import *
 from py_db_adapter.domain.logger import *
 from py_db_adapter.domain.primary_key import *
 from py_db_adapter.domain.repository import *
+from py_db_adapter.domain.row_comparison_results import *
 from py_db_adapter.domain.rows import *
 from py_db_adapter.domain.sql_adapter import *
 from py_db_adapter.domain.sql_formatter import *

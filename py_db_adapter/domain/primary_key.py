@@ -8,7 +8,7 @@ from py_db_adapter.domain import exceptions
 __all__ = ("PrimaryKey",)
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, eq=True)
 class PrimaryKey(abc.ABC):
     schema_name: typing.Optional[str]
     table_name: str

@@ -152,8 +152,9 @@ def sync(
         }
     else:
         src_keys = src_repo.keys(cur=src_cur, additional_cols=compare_cols)
-        changes = dest_rows.compare(
-            rows=src_keys,
+        changes = domain.compare_rows(
+            src_rows=src_keys,
+            dest_rows=dest_rows,
             key_cols=pks,
             compare_cols=compare_cols,
             ignore_missing_key_cols=True,
@@ -180,7 +181,6 @@ def sync(
                     cur=src_cur,
                     rows=changes.rows_added,
                     cols=include_cols,
-                    # cols=src_table.column_names,
                 )
                 dest_repo.add(cur=dest_cur, rows=new_rows)
                 logger.info(f"Added {rows_added} rows to [{src_table_name}].")
@@ -192,7 +192,6 @@ def sync(
                     cur=src_cur,
                     rows=changes.rows_updated,
                     cols=include_cols,
-                    # cols=src_table.column_names,
                 )
                 dest_repo.update(cur=dest_cur, rows=updated_rows, columns=include_cols)
                 logger.info(f"Updated {rows_updated} rows on [{src_table_name}].")

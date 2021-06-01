@@ -25,7 +25,7 @@ def check_customer2_table_in_sync(cur: pyodbc.Cursor) -> None:
 
 def test_sync_with_explicit_cols(pg_cursor: pyodbc.Cursor) -> None:
     db_adapter = adapter.PostgresAdapter()
-    service.sync(
+    result = service.sync(
         src_cur=pg_cursor,
         dest_cur=pg_cursor,
         src_db_adapter=db_adapter,
@@ -38,13 +38,16 @@ def test_sync_with_explicit_cols(pg_cursor: pyodbc.Cursor) -> None:
         compare_cols={"customer_first_name", "customer_last_name"},
     )
     check_customer2_table_in_sync(cur=pg_cursor)
+    assert result["added"] == 9
+    assert result["deleted"] == 0
+    assert result["updated"] == 0
 
     # test update
     pg_cursor.execute(
         "UPDATE sales.customer SET customer_first_name = 'Frank' WHERE customer_first_name = 'Dan'"
     )
     pg_cursor.commit()
-    service.sync(
+    result = service.sync(
         src_cur=pg_cursor,
         dest_cur=pg_cursor,
         src_db_adapter=db_adapter,
@@ -57,11 +60,14 @@ def test_sync_with_explicit_cols(pg_cursor: pyodbc.Cursor) -> None:
         compare_cols={"customer_first_name", "customer_last_name"},
     )
     check_customer2_table_in_sync(cur=pg_cursor)
+    assert result["added"] == 0
+    assert result["deleted"] == 0
+    assert result["updated"] == 1
 
     # test delete
     pg_cursor.execute("DELETE FROM sales.customer WHERE customer_first_name = 'Steve'")
     pg_cursor.commit()
-    service.sync(
+    result = service.sync(
         src_cur=pg_cursor,
         dest_cur=pg_cursor,
         src_db_adapter=db_adapter,
@@ -77,6 +83,9 @@ def test_sync_with_explicit_cols(pg_cursor: pyodbc.Cursor) -> None:
 
     rows = pg_cursor.execute("SELECT COUNT(*) FROM sales.customer").fetchval()
     assert rows == 8
+    assert result["added"] == 0
+    assert result["deleted"] == 1
+    assert result["updated"] == 0
 
 
 # def test_sync_with_default_cols(
