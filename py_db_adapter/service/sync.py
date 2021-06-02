@@ -28,6 +28,7 @@ def sync(
     compare_cols: typing.Optional[typing.Set[str]] = None,  # None = compare on all common cols
     recreate: bool = False,
     cache_dir: typing.Optional[pathlib.Path] = None,
+    skip_if_row_counts_match: bool = False,
     batch_size: int = 1000,
     # fmt: on
 ) -> domain.SyncResult:
