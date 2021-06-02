@@ -38,9 +38,9 @@ def test_sync_with_explicit_cols(pg_cursor: pyodbc.Cursor) -> None:
         compare_cols={"customer_first_name", "customer_last_name"},
     )
     check_customer2_table_in_sync(cur=pg_cursor)
-    assert result["added"] == 9
-    assert result["deleted"] == 0
-    assert result["updated"] == 0
+    assert result.added == 9
+    assert result.deleted == 0
+    assert result.updated == 0
 
     # test update
     pg_cursor.execute(
@@ -60,9 +60,9 @@ def test_sync_with_explicit_cols(pg_cursor: pyodbc.Cursor) -> None:
         compare_cols={"customer_first_name", "customer_last_name"},
     )
     check_customer2_table_in_sync(cur=pg_cursor)
-    assert result["added"] == 0
-    assert result["deleted"] == 0
-    assert result["updated"] == 1
+    assert result.added == 0
+    assert result.deleted == 0
+    assert result.updated == 1
 
     # test delete
     pg_cursor.execute("DELETE FROM sales.customer WHERE customer_first_name = 'Steve'")
@@ -83,40 +83,6 @@ def test_sync_with_explicit_cols(pg_cursor: pyodbc.Cursor) -> None:
 
     rows = pg_cursor.execute("SELECT COUNT(*) FROM sales.customer").fetchval()
     assert rows == 8
-    assert result["added"] == 0
-    assert result["deleted"] == 1
-    assert result["updated"] == 0
-
-
-# def test_sync_with_default_cols(
-#     cache_dir: pathlib.Path, postgres_pyodbc_db_uri: str
-# ) -> None:
-#     with pyodbc.connect(postgres_pyodbc_db_uri) as con:
-#         with con.cursor() as cur:
-#             row_ct_sql = "SELECT COUNT(*) AS row_ct FROM sales.customer2"
-#             row_ct = cur.execute(row_ct_sql).fetchval()
-#             assert row_ct == 0
-#
-#     src = pda.postgres_pyodbc_datasource(
-#         db_name="test_db",
-#         db_uri=postgres_pyodbc_db_uri,
-#         cache_dir=cache_dir,
-#         schema_name="sales",
-#         table_name="customer",
-#         compare_cols=None,
-#         custom_pk_cols=None,
-#         max_batch_size=1000,
-#         read_only=True,
-#     )
-#     dest = src.copy(
-#         update={
-#             "table_name": "customer2",
-#             "read_only": False,
-#         }
-#     )
-#     with src, dest:
-#         dest.sync(src=src, recreate=False)
-#         dest.commit()
-#         check_customer2_table_in_sync(postgres_pyodbc_db_uri)
-#
-#
+    assert result.added == 0
+    assert result.deleted == 1
+    assert result.updated == 0

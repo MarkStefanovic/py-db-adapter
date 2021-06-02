@@ -16,5 +16,6 @@ from py_db_adapter.domain.sql_formatter import *
 from py_db_adapter.domain.sql_operator import *
 from py_db_adapter.domain.sql_predicate import *
 from py_db_adapter.domain.std_column_adapters import *
+from py_db_adapter.domain.sync_result import *
 from py_db_adapter.domain.table import *
 from py_db_adapter.domain.unique_constraint import *

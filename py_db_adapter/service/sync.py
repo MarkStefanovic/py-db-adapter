@@ -1,5 +1,4 @@
 import pathlib
-import pickle
 import typing
 
 import pyodbc
@@ -29,10 +28,9 @@ def sync(
     compare_cols: typing.Optional[typing.Set[str]] = None,  # None = compare on all common cols
     recreate: bool = False,
     cache_dir: typing.Optional[pathlib.Path] = None,
-    skip_if_row_counts_match: bool = False,
     batch_size: int = 1000,
     # fmt: on
-) -> typing.Dict[str, int]:
+) -> domain.SyncResult:
     if src_db_adapter.fast_executemany_available:
         src_cur.fast_executemany = True
 
@@ -40,12 +38,10 @@ def sync(
         dest_cur.fast_executemany = True
 
     if skip_if_row_counts_match:
-        dest_row_ct = get_row_count(
-            cache_dir=cache_dir,
-            dest_db_adapter=dest_db_adapter,
-            dest_cur=dest_cur,
-            dest_schema_name=dest_schema_name,
-            dest_table_name=dest_table_name,
+        dest_row_ct = dest_db_adapter.row_count(
+            cur=dest_cur,
+            table_name=dest_table_name,
+            schema_name=dest_schema_name,
         )
         src_row_ct = src_db_adapter.row_count(
             cur=src_cur,
@@ -53,12 +49,16 @@ def sync(
             schema_name=src_schema_name,
         )
         if src_row_ct == dest_row_ct:
-            return {
-                "added": 0,
-                "deleted": 0,
-                "updated": 0,
-                "skipped": True,
-            }
+            return domain.SyncResult(
+                src_schema_name=src_schema_name,
+                src_table_name=src_table_name,
+                dest_schema_name=dest_schema_name,
+                dest_table_name=dest_table_name,
+                added=0,
+                deleted=0,
+                updated=0,
+                skipped=True,
+            )
 
     src_table = adapter.inspect_table(
         cur=src_cur,
@@ -110,17 +110,7 @@ def sync(
         batch_size=batch_size,
     )
 
-    if cache_dir:
-        fp = (
-            cache_dir
-            / f"{dest_table.schema_name or '_'}.{dest_table.table_name}.dest-keys.p"
-        )
-        if fp.exists():
-            dest_rows = pickle.load(open(file=fp, mode="rb"))
-        else:
-            dest_rows = dest_repo.keys(cur=dest_cur, additional_cols=compare_cols)
-    else:
-        dest_rows = dest_repo.keys(cur=dest_cur, additional_cols=compare_cols)
+    dest_rows = dest_repo.keys(cur=dest_cur, additional_cols=compare_cols)
 
     if dest_rows.is_empty:
         logger.info(
@@ -129,27 +119,16 @@ def sync(
         src_rows = src_repo.all(cur=src_cur, columns=include_cols)
         dest_repo.add(cur=dest_cur, rows=src_rows)
 
-        if cache_dir:
-            dest_keys = src_rows.subset(pks | compare_cols)
-            dump_dest_keys(
-                cache_dir=cache_dir,
-                schema_name=dest_schema_name,
-                table_name=dest_table_name,
-                dest_keys=dest_keys,
-            )
-            dump_row_count(
-                cache_dir=cache_dir,
-                schema_name=dest_schema_name,
-                table_name=dest_table_name,
-                rows=src_rows.row_count,
-            )
-
-        return {
-            "added": src_rows.row_count,
-            "deleted": 0,
-            "updated": 0,
-            "skipped": False,
-        }
+        return domain.SyncResult(
+            src_schema_name=src_schema_name,
+            src_table_name=src_table_name,
+            dest_schema_name=dest_schema_name,
+            dest_table_name=dest_table_name,
+            added=src_rows.row_count,
+            deleted=0,
+            updated=0,
+            skipped=False,
+        )
     else:
         src_keys = src_repo.keys(cur=src_cur, additional_cols=compare_cols)
         changes = domain.compare_rows(
@@ -167,12 +146,16 @@ def sync(
             logger.info(
                 "Source and destination matched already, so there was no need to refresh."
             )
-            result = {
-                "added": 0,
-                "deleted": 0,
-                "updated": 0,
-                "skipped": False,
-            }
+            return domain.SyncResult(
+                src_schema_name=src_schema_name,
+                src_table_name=src_table_name,
+                dest_schema_name=dest_schema_name,
+                dest_table_name=dest_table_name,
+                added=0,
+                deleted=0,
+                updated=0,
+                skipped=False,
+            )
         else:
             if rows_added := changes.rows_added.row_count:
                 new_rows = src_repo.fetch_rows_by_primary_key_values(
@@ -193,95 +176,14 @@ def sync(
                 )
                 dest_repo.update(cur=dest_cur, rows=updated_rows, columns=include_cols)
                 logger.info(f"Updated {rows_updated} rows on [{src_table_name}].")
-            result = {
-                "added": rows_added,
-                "deleted": rows_deleted,
-                "updated": rows_updated,
-                "skipped": False,
-            }
 
-        if cache_dir:
-            dump_dest_keys(
-                cache_dir=cache_dir,
-                schema_name=dest_schema_name,
-                table_name=dest_table_name,
-                dest_keys=src_keys,
+            return domain.SyncResult(
+                src_schema_name=src_schema_name,
+                src_table_name=src_table_name,
+                dest_schema_name=dest_schema_name,
+                dest_table_name=dest_table_name,
+                added=rows_added,
+                deleted=rows_deleted,
+                updated=rows_updated,
+                skipped=False,
             )
-            dump_row_count(
-                cache_dir=cache_dir,
-                schema_name=dest_schema_name,
-                table_name=dest_table_name,
-                rows=src_keys.row_count,
-            )
-
-        return result
-
-
-def dump_dest_keys(
-    *,
-    cache_dir: pathlib.Path,
-    schema_name: typing.Optional[str],
-    table_name: str,
-    dest_keys: domain.Rows,
-) -> None:
-    fp = cache_dir / f"{schema_name or '_'}.{table_name}.dest-keys.p"
-    with fp.open("wb") as fh:
-        pickle.dump(dest_keys, fh)
-
-
-def dump_row_count(
-    *,
-    cache_dir: pathlib.Path,
-    schema_name: typing.Optional[str],
-    table_name: str,
-    rows: int,
-) -> None:
-    fp = cache_dir / f"{schema_name or '_'}.{table_name}.rows.p"
-    with fp.open("wb") as fh:
-        pickle.dump(rows, fh)
-
-
-def get_row_count(
-    *,
-    cache_dir: typing.Optional[pathlib.Path],
-    dest_db_adapter: domain.DbAdapter,
-    dest_cur: pyodbc.Cursor,
-    dest_schema_name: typing.Optional[str],
-    dest_table_name: str,
-    recreate: bool = False,
-) -> int:
-    if cache_dir:
-        fp = cache_dir / f"{dest_schema_name or '_'}.{dest_table_name}.rows.p"
-        if fp.exists() and recreate is False:
-            try:
-                with fp.open("rb") as fh:
-                    return pickle.load(fh)
-            except Exception as e:
-                logger.exception(e)
-                return get_row_count(
-                    cache_dir=cache_dir,
-                    dest_db_adapter=dest_db_adapter,
-                    dest_cur=dest_cur,
-                    dest_schema_name=dest_schema_name,
-                    dest_table_name=dest_table_name,
-                    recreate=True,
-                )
-        else:
-            rows = dest_db_adapter.row_count(
-                cur=dest_cur,
-                table_name=dest_table_name,
-                schema_name=dest_schema_name,
-            )
-            dump_row_count(
-                cache_dir=cache_dir,
-                schema_name=dest_schema_name,
-                table_name=dest_table_name,
-                rows=rows,
-            )
-            return rows
-
-    return dest_db_adapter.row_count(
-        cur=dest_cur,
-        table_name=dest_table_name,
-        schema_name=dest_schema_name,
-    )
