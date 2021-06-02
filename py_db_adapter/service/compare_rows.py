@@ -183,8 +183,12 @@ def rows_to_examples(
         prefix = "(" + ", ".join(pks[0].keys()) + "): "
         examples = [
             "(" + ", ".join(str(c) for c in row.values()) + ")"
-            for row in pks[:max_examples]
+            for row in sorted(pks, key=lambda d: tuple(d.values()))[:max_examples]
         ]
         return prefix + ", ".join(str(x) for x in examples)
     else:
         return ""
+
+
+# def get_first_x_pk_values(rows: typing.List[typing.Dict[str, typing.Any]]) -> typing.List[typing.Dict[str, typing.Any]]:
+#     sorted_rows = sorted(rows, key=lambda d: d.values())
