@@ -9,6 +9,7 @@ from py_db_adapter.domain.logger import *
 from py_db_adapter.domain.primary_key import *
 from py_db_adapter.domain.repository import *
 from py_db_adapter.domain.row_comparison_results import *
+from py_db_adapter.domain.row_diff import *
 from py_db_adapter.domain.rows import *
 from py_db_adapter.domain.sql_adapter import *
 from py_db_adapter.domain.sql_formatter import *

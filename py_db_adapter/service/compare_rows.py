@@ -38,9 +38,7 @@ def compare_rows(
             table_name=dest_table_name,
             schema_name=dest_schema_name,
         )
-        if src_pks and dest_pks:
-            pk_cols = [pk for pk in src_pks if pk in dest_pks]
-        elif src_pks:
+        if src_pks:
             pk_cols = src_pks
         elif dest_pks:
             pk_cols = dest_pks

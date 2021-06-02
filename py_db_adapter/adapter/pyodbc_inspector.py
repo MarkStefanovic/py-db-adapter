@@ -93,57 +93,15 @@ def pyodbc_inspect_table(
     for col in pyodbc_cols:
         column_name = col.column_name.lower()
         if include_cols is None or column_name in include_cols:
-            if col.domain_data_type == domain.DataType.Bool:
-                domain_col: domain.Column = domain.Column(
-                    column_name=column_name,
-                    nullable=col.nullable_flag,
-                    data_type=col.domain_data_type,
-                )
-            elif col.domain_data_type == domain.DataType.Date:
-                domain_col = domain.Column(
-                    column_name=column_name,
-                    nullable=col.nullable_flag,
-                    data_type=col.domain_data_type,
-                )
-            elif col.domain_data_type == domain.DataType.DateTime:
-                domain_col = domain.Column(
-                    column_name=column_name,
-                    nullable=col.nullable_flag,
-                    data_type=col.domain_data_type,
-                )
-            elif col.domain_data_type == domain.DataType.Decimal:
-                domain_col = domain.Column(
-                    column_name=column_name,
-                    nullable=col.nullable_flag,
-                    data_type=col.domain_data_type,
-                    precision=col.precision or 18,
-                    scale=col.scale or 2,
-                )
-            elif col.domain_data_type == domain.DataType.Float:
-                domain_col = domain.Column(
-                    column_name=column_name,
-                    nullable=col.nullable_flag,
-                    data_type=col.domain_data_type,
-                )
-            elif col.domain_data_type == domain.DataType.Int:
-                domain_col = domain.Column(
-                    autoincrement=col.autoincrement_flag,
-                    column_name=column_name,
-                    nullable=col.nullable_flag,
-                    data_type=col.domain_data_type,
-                )
-            elif col.domain_data_type == domain.DataType.Text:
-                domain_col = domain.Column(
-                    column_name=column_name,
-                    nullable=col.nullable_flag,
-                    data_type=col.domain_data_type,
-                    max_length=col.length,
-                )
-            else:
-                raise ValueError(
-                    f"Unrecognized domain_data_type: {col.domain_data_type!r}"
-                )
-
+            domain_col = domain.Column(
+                autoincrement=col.autoincrement_flag,
+                column_name=column_name,
+                nullable=col.nullable_flag,
+                data_type=col.domain_data_type,
+                max_length=col.length,
+                precision=col.precision,
+                scale=col.scale,
+            )
             domain_cols.append(domain_col)
 
     if custom_pk_cols:
