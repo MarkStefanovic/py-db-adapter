@@ -66,8 +66,6 @@ def update_history_table(
         compare_cols=compare_cols or src_table.non_pk_column_names,
         src_rows=current_state,
         dest_rows=prior_state,
-        ignore_missing_key_cols=False,
-        ignore_extra_key_cols=True,
     )
     if (
         changes.rows_added.is_empty
@@ -177,8 +175,6 @@ def get_changes(
         compare_cols=compare_cols or table.non_pk_column_names,
         src_rows=current_state,
         dest_rows=prior_state,
-        ignore_missing_key_cols=False,
-        ignore_extra_key_cols=True,
     )
 
 

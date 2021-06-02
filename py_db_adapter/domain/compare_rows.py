@@ -1,7 +1,6 @@
 import typing
 import warnings
 
-from py_db_adapter.domain import exceptions
 from py_db_adapter.domain.row_diff import RowDiff
 from py_db_adapter.domain.rows import Rows, rows_from_lookup_table, rows_to_lookup_table
 
@@ -14,8 +13,6 @@ def compare_rows(
     src_rows: Rows,
     dest_rows: Rows,
     compare_cols: typing.Optional[typing.Set[str]] = None,
-    ignore_missing_key_cols: bool = True,
-    ignore_extra_key_cols: bool = True,
 ) -> RowDiff:
     src_cols = set(src_rows.column_names)
     dest_cols = set(dest_rows.column_names)
@@ -25,32 +22,6 @@ def compare_rows(
         common_cols = key_cols | compare_cols
     common_compare_cols = common_cols - key_cols
     common_key_cols = key_cols & common_cols
-    src_key_cols = key_cols & src_cols
-    dest_key_cols = dest_cols & dest_cols
-    if not common_key_cols:
-        raise exceptions.NoCommonKeyColumns(
-            src_key_cols=src_key_cols, dest_key_cols=dest_key_cols
-        )
-
-    if not ignore_missing_key_cols:
-        if key_cols - src_key_cols:
-            raise exceptions.MissingKeyColumns(
-                actual_key_cols=src_key_cols, expected_key_cols=key_cols
-            )
-        if key_cols - dest_key_cols:
-            raise exceptions.MissingKeyColumns(
-                actual_key_cols=dest_key_cols, expected_key_cols=key_cols
-            )
-
-    if not ignore_extra_key_cols:
-        if src_key_cols - key_cols:
-            raise exceptions.ExtraKeyColumns(
-                actual_key_cols=src_key_cols, expected_key_cols=key_cols
-            )
-        if dest_key_cols - key_cols:
-            raise exceptions.ExtraKeyColumns(
-                actual_key_cols=dest_key_cols, expected_key_cols=key_cols
-            )
 
     src_lkp_tbl = rows_to_lookup_table(
         rs=src_rows,

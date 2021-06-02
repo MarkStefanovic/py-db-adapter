@@ -1,5 +1,6 @@
 import dataclasses
 import decimal
+import itertools
 import pathlib
 import typing
 
@@ -27,25 +28,15 @@ def compare_rows(
     max_examples: int = 10,
     # fmt: on
 ) -> domain.RowComparisonResult:
-    if pk_cols is None:
-        src_pks = adapter.get_primary_key_cols_for_table(
-            cur=src_cur,
-            table_name=src_table_name,
-            schema_name=src_schema_name,
-        )
-        dest_pks = adapter.get_primary_key_cols_for_table(
-            cur=dest_cur,
-            table_name=dest_table_name,
-            schema_name=dest_schema_name,
-        )
-        if src_pks:
-            pk_cols = src_pks
-        elif dest_pks:
-            pk_cols = dest_pks
-        else:
-            raise domain.exceptions.MissingPrimaryKey(
-                schema_name=src_schema_name, table_name=src_table_name
-            )
+    pk_cols = coalesce_pks(
+        pk_cols=pk_cols,
+        src_cur=src_cur,
+        dest_cur=dest_cur,
+        src_schema_name=src_schema_name,
+        src_table_name=src_table_name,
+        dest_schema_name=dest_schema_name,
+        dest_table_name=dest_table_name,
+    )
 
     src_table = adapter.inspect_table(
         cur=src_cur,
@@ -107,19 +98,18 @@ def compare_rows(
         dest_rows=dest_rows,
         key_cols=pks,
         compare_cols=compare_cols,
-        ignore_missing_key_cols=False,
-        ignore_extra_key_cols=False,
     )
-
+    # TODO
     if diff.rows_added:
         missing_row_examples = diff.rows_added.subset(column_names=pks).as_dicts()
         capped_missing_row_examples = {
             pk_col: pk_val
             for row in missing_row_examples
-            for pk_col, pk_val in sorted(row.items())
+            for pk_col, pk_val in sorted(row.items())[:max_examples]
         }
         missing_row_examples = f"({', '.join(sorted(pks))}): " + ", ".join(
-            k for k, v in capped_missing_row_examples.items()[:max_examples]
+
+            for k, v in capped_missing_row_examples.items()
         )
         if src_rows.row_count > 0:
             pct_missing = decimal.Decimal(
@@ -139,7 +129,10 @@ def compare_rows(
             for pk_col, pk_val in sorted(row.items())
         }
         extra_row_examples = f"({', '.join(sorted(pks))}): " + ", ".join(
-            k for k, v in capped_extra_row_examples.items()[:max_examples]
+            k
+            for k, v in itertools.islice(
+                capped_extra_row_examples.items(), max_examples
+            )
         )
         if src_rows.row_count > 0:
             pct_extra = decimal.Decimal(
@@ -158,9 +151,15 @@ def compare_rows(
             for row in stale_row_examples
             for pk_col, pk_val in sorted(row.items())
         }
-        stale_row_examples = f"({', '.join(sorted(pks))}): " + ", ".join(
-            k for k, v in capped_stale_row_examples.items()[:max_examples]
-        )
+        if capped_stale_row_examples:
+            stale_row_examples = f"({', '.join(sorted(pks))}): " + ", ".join(
+                v
+                for k, v in itertools.islice(
+                    capped_stale_row_examples.items(), max_examples
+                )
+            )
+        else:
+            stale_row_examples = ""
         if src_rows.row_count > 0:
             pct_stale = decimal.Decimal(
                 format(diff.rows_updated.row_count / src_rows.row_count, ".3f")
@@ -186,3 +185,37 @@ def compare_rows(
         stale_row_examples=stale_row_examples,
         pct_stale=pct_stale,
     )
+
+
+def coalesce_pks(
+    *,
+    pk_cols: typing.Optional[typing.List[str]],
+    src_cur: pyodbc.Cursor,
+    dest_cur: pyodbc.Cursor,
+    src_schema_name: str,
+    src_table_name: str,
+    dest_schema_name: str,
+    dest_table_name: str,
+) -> typing.List[str]:
+    if pk_cols is None:
+        src_pks = adapter.get_primary_key_cols_for_table(
+            cur=src_cur,
+            table_name=src_table_name,
+            schema_name=src_schema_name,
+        )
+        if src_pks:
+            return src_pks
+        else:
+            dest_pks = adapter.get_primary_key_cols_for_table(
+                cur=dest_cur,
+                table_name=dest_table_name,
+                schema_name=dest_schema_name,
+            )
+            if dest_pks:
+                return dest_pks
+            else:
+                raise domain.exceptions.MissingPrimaryKey(
+                    schema_name=src_schema_name, table_name=src_table_name
+                )
+    else:
+        return pk_cols

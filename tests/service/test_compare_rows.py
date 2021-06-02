@@ -1,3 +1,5 @@
+import decimal
+
 import pyodbc
 
 from py_db_adapter import adapter, domain, service
@@ -17,4 +19,19 @@ def test_compare_rows_using_defaults(pg_cursor: pyodbc.Cursor) -> None:
         dest_table_name="customer2",
     )
     assert isinstance(result, domain.RowComparisonResult)
-    assert result == "test"
+    expected = domain.RowComparisonResult(
+        src_schema="sales",
+        src_table="customer",
+        dest_schema="sales",
+        dest_table="customer2",
+        missing_rows=9,
+        missing_row_examples="(customer_id): customer_id",
+        pct_missing=decimal.Decimal("1"),
+        extra_rows=0,
+        extra_row_examples="(customer_id): ",
+        pct_extra=decimal.Decimal("0"),
+        stale_rows=0,
+        stale_row_examples="(customer_id): ",
+        pct_stale=decimal.Decimal("0"),
+    )
+    assert result == expected

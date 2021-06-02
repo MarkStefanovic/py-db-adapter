@@ -157,8 +157,6 @@ def sync(
             dest_rows=dest_rows,
             key_cols=pks,
             compare_cols=compare_cols,
-            ignore_missing_key_cols=True,
-            ignore_extra_key_cols=True,
         )
 
         if (
