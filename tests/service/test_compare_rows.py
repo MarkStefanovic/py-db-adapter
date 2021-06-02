@@ -25,13 +25,13 @@ def test_compare_rows_using_defaults(pg_cursor: pyodbc.Cursor) -> None:
         dest_schema="sales",
         dest_table="customer2",
         missing_rows=9,
-        missing_row_examples="(customer_id): customer_id",
+        missing_row_examples="(customer_id): (6), (2), (5), (8), (4), (1), (7), (3), (9)",
         pct_missing=decimal.Decimal("1"),
         extra_rows=0,
-        extra_row_examples="(customer_id): ",
+        extra_row_examples="",
         pct_extra=decimal.Decimal("0"),
         stale_rows=0,
-        stale_row_examples="(customer_id): ",
+        stale_row_examples="",
         pct_stale=decimal.Decimal("0"),
     )
     assert result == expected

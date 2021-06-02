@@ -93,82 +93,36 @@ def compare_rows(
         additional_cols=compare_cols,
     )
 
-    diff = domain.compare_rows(
+    diff: domain.RowDiff = domain.compare_rows(
         src_rows=src_rows,
         dest_rows=dest_rows,
         key_cols=pks,
         compare_cols=compare_cols,
     )
-    # TODO
-    if diff.rows_added:
-        missing_row_examples = diff.rows_added.subset(column_names=pks).as_dicts()
-        capped_missing_row_examples = {
-            pk_col: pk_val
-            for row in missing_row_examples
-            for pk_col, pk_val in sorted(row.items())[:max_examples]
-        }
-        missing_row_examples = f"({', '.join(sorted(pks))}): " + ", ".join(
 
-            for k, v in capped_missing_row_examples.items()
-        )
-        if src_rows.row_count > 0:
-            pct_missing = decimal.Decimal(
-                format(diff.rows_added.row_count / src_rows.row_count, ".3f")
-            )
-        else:
-            pct_missing = decimal.Decimal(0)
-    else:
-        missing_row_examples = ""
-        pct_missing = decimal.Decimal(0)
+    extra_rows = diff.rows_deleted
+    missing_rows = diff.rows_added
+    stale_rows = diff.rows_updated
 
-    if diff.rows_deleted:
-        extra_row_examples = diff.rows_deleted.subset(column_names=pks).as_dicts()
-        capped_extra_row_examples = {
-            pk_col: pk_val
-            for row in extra_row_examples
-            for pk_col, pk_val in sorted(row.items())
-        }
-        extra_row_examples = f"({', '.join(sorted(pks))}): " + ", ".join(
-            k
-            for k, v in itertools.islice(
-                capped_extra_row_examples.items(), max_examples
-            )
-        )
-        if src_rows.row_count > 0:
-            pct_extra = decimal.Decimal(
-                format(diff.rows_deleted.row_count / src_rows.row_count, ".3f")
-            )
-        else:
-            pct_extra = decimal.Decimal(0)
-    else:
-        extra_row_examples = ""
-        pct_extra = decimal.Decimal(0)
+    extra_pct = decimal.Decimal(
+        format(extra_rows.row_count / src_rows.row_count, ".2f")
+    )
+    missing_pct = decimal.Decimal(
+        format(missing_rows.row_count / src_rows.row_count, ".2f")
+    )
+    stale_pct = decimal.Decimal(
+        format(stale_rows.row_count / src_rows.row_count, ".2f")
+    )
 
-    if diff.rows_updated:
-        stale_row_examples = diff.rows_updated.subset(column_names=pks).as_dicts()
-        capped_stale_row_examples = {
-            pk_col: pk_val
-            for row in stale_row_examples
-            for pk_col, pk_val in sorted(row.items())
-        }
-        if capped_stale_row_examples:
-            stale_row_examples = f"({', '.join(sorted(pks))}): " + ", ".join(
-                v
-                for k, v in itertools.islice(
-                    capped_stale_row_examples.items(), max_examples
-                )
-            )
-        else:
-            stale_row_examples = ""
-        if src_rows.row_count > 0:
-            pct_stale = decimal.Decimal(
-                format(diff.rows_updated.row_count / src_rows.row_count, ".3f")
-            )
-        else:
-            pct_stale = decimal.Decimal(0)
-    else:
-        stale_row_examples = ""
-        pct_stale = 0
+    extra_examples = rows_to_examples(
+        rows=extra_rows, pk_cols=pks, max_examples=max_examples
+    )
+    missing_examples = rows_to_examples(
+        rows=missing_rows, pk_cols=pks, max_examples=max_examples
+    )
+    stale_examples = rows_to_examples(
+        rows=stale_rows, pk_cols=pks, max_examples=max_examples
+    )
 
     return domain.RowComparisonResult(
         src_schema=src_schema_name,
@@ -176,14 +130,14 @@ def compare_rows(
         dest_schema=dest_schema_name,
         dest_table=dest_table_name,
         missing_rows=diff.rows_added.row_count,
-        missing_row_examples=missing_row_examples,
-        pct_missing=pct_missing,
+        missing_row_examples=missing_examples,
+        pct_missing=missing_pct,
         extra_rows=diff.rows_deleted.row_count,
-        extra_row_examples=extra_row_examples,
-        pct_extra=pct_extra,
+        extra_row_examples=extra_examples,
+        pct_extra=extra_pct,
         stale_rows=diff.rows_updated.row_count,
-        stale_row_examples=stale_row_examples,
-        pct_stale=pct_stale,
+        stale_row_examples=stale_examples,
+        pct_stale=stale_pct,
     )
 
 
@@ -219,3 +173,18 @@ def coalesce_pks(
                 )
     else:
         return pk_cols
+
+
+def rows_to_examples(
+    rows: domain.Rows, pk_cols: typing.Set[str], max_examples: int
+) -> str:
+    pks: typing.List[typing.Dict[str, typing.Any]] = rows.subset(pk_cols).as_dicts()
+    if pks:
+        prefix = "(" + ", ".join(pks[0].keys()) + "): "
+        examples = [
+            "(" + ", ".join(str(c) for c in row.values()) + ")"
+            for row in pks[:max_examples]
+        ]
+        return prefix + ", ".join(str(x) for x in examples)
+    else:
+        return ""
