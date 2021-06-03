@@ -1,6 +1,3 @@
-import pathlib
-import pickle
-
 import pyodbc
 
 from py_db_adapter import adapter, service
@@ -46,69 +43,23 @@ def check_history_table_in_sync(cur: pyodbc.Cursor) -> None:
 def test_change_tracking_happy_path(pg_cursor: pyodbc.Cursor) -> None:
     src_db_adapter = adapter.PostgresAdapter()
     dest_db_adapter = adapter.PostgresAdapter()
-    src_table = adapter.inspect_table(
-        cur=pg_cursor,
-        schema_name="sales",
-        table_name="customer",
-        pk_cols=None,
-        include_cols=None,
-        cache_dir=None,
-    )
 
     service.update_history_table(
         src_cur=pg_cursor,
         dest_cur=pg_cursor,
         src_db_adapter=src_db_adapter,
         dest_db_adapter=dest_db_adapter,
-        src_table=src_table,
+        src_schema_name="sales",
+        src_table_name="customer",
         compare_cols=None,  # compare all columns
         recreate=False,
     )
     check_history_table_in_sync(cur=pg_cursor)
-
-
-def test_change_tracking_with_cache_happy_path(
-    pg_cursor: pyodbc.Cursor, cache_dir: pathlib.Path
-) -> None:
-    src_db_adapter = adapter.PostgresAdapter()
-    dest_db_adapter = adapter.PostgresAdapter()
-    src_table = adapter.inspect_table(
-        cur=pg_cursor,
-        schema_name="sales",
-        table_name="customer",
-        pk_cols=None,
-        include_cols=None,
-        cache_dir=cache_dir,
-    )
-
-    service.update_history_table(
-        src_cur=pg_cursor,
-        dest_cur=pg_cursor,
-        src_db_adapter=src_db_adapter,
-        dest_db_adapter=dest_db_adapter,
-        src_table=src_table,
-        compare_cols=None,  # compare all columns
-        recreate=False,
-    )
-    check_history_table_in_sync(cur=pg_cursor)
-    fp = cache_dir / "sales.customer.p"
-    assert fp.exists()
-    with fp.open("rb") as fh:
-        tbl = pickle.load(fh)
-        assert tbl == src_table
 
 
 def test_change_tracking_after_update(pg_cursor: pyodbc.Cursor) -> None:
     src_db_adapter = adapter.PostgresAdapter()
     dest_db_adapter = adapter.PostgresAdapter()
-    src_table = adapter.inspect_table(
-        cur=pg_cursor,
-        schema_name="sales",
-        table_name="customer",
-        pk_cols=None,
-        include_cols=None,
-        cache_dir=None,
-    )
 
     pg_cursor.execute(
         """
@@ -132,7 +83,8 @@ def test_change_tracking_after_update(pg_cursor: pyodbc.Cursor) -> None:
         dest_cur=pg_cursor,
         src_db_adapter=src_db_adapter,
         dest_db_adapter=dest_db_adapter,
-        src_table=src_table,
+        src_schema_name="sales",
+        src_table_name="customer",
         compare_cols=None,  # compare all columns
         recreate=False,
     )
@@ -151,7 +103,8 @@ def test_change_tracking_after_update(pg_cursor: pyodbc.Cursor) -> None:
         dest_cur=pg_cursor,
         src_db_adapter=src_db_adapter,
         dest_db_adapter=dest_db_adapter,
-        src_table=src_table,
+        src_schema_name="sales",
+        src_table_name="customer",
         compare_cols=None,  # compare all columns
         recreate=False,
     )
@@ -173,14 +126,6 @@ def test_change_tracking_after_update(pg_cursor: pyodbc.Cursor) -> None:
 def test_change_tracking_after_delete(pg_cursor: pyodbc.Cursor) -> None:
     src_db_adapter = adapter.PostgresAdapter()
     dest_db_adapter = adapter.PostgresAdapter()
-    src_table = adapter.inspect_table(
-        cur=pg_cursor,
-        schema_name="sales",
-        table_name="customer",
-        pk_cols=None,
-        include_cols=None,
-        cache_dir=None,
-    )
 
     pg_cursor.execute("DELETE FROM sales.customer WHERE customer_first_name = 'Dan'")
     result = pg_cursor.execute(
@@ -197,7 +142,8 @@ def test_change_tracking_after_delete(pg_cursor: pyodbc.Cursor) -> None:
         dest_cur=pg_cursor,
         src_db_adapter=src_db_adapter,
         dest_db_adapter=dest_db_adapter,
-        src_table=src_table,
+        src_schema_name="sales",
+        src_table_name="customer",
         compare_cols=None,  # compare all columns
         recreate=False,
     )
@@ -239,7 +185,8 @@ def test_change_tracking_after_delete(pg_cursor: pyodbc.Cursor) -> None:
         dest_cur=pg_cursor,
         src_db_adapter=src_db_adapter,
         dest_db_adapter=dest_db_adapter,
-        src_table=src_table,
+        src_schema_name="sales",
+        src_table_name="customer",
         compare_cols=None,  # compare all columns
         recreate=False,
     )

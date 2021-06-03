@@ -18,9 +18,9 @@ def compare_rows(
     dest_cur: pyodbc.Cursor,
     src_db_adapter: domain.DbAdapter,
     dest_db_adapter: domain.DbAdapter,
-    src_schema_name: typing.Optional[str],
+    src_schema_name: str,
     src_table_name: str,
-    dest_schema_name: typing.Optional[str],
+    dest_schema_name: str,
     dest_table_name: str,
     pk_cols: typing.Optional[typing.List[str]] = None,  # None = inspect to find out
     compare_cols: typing.Optional[typing.Set[str]] = None,  # None = compare on all common cols
@@ -28,15 +28,16 @@ def compare_rows(
     max_examples: int = 10,
     # fmt: on
 ) -> domain.RowComparisonResult:
-    pk_cols = coalesce_pks(
-        pk_cols=pk_cols,
-        src_cur=src_cur,
-        dest_cur=dest_cur,
-        src_schema_name=src_schema_name,
-        src_table_name=src_table_name,
-        dest_schema_name=dest_schema_name,
-        dest_table_name=dest_table_name,
-    )
+    if pk_cols is None:
+        pk_cols = get_pks(
+            pk_cols=pk_cols,
+            src_cur=src_cur,
+            dest_cur=dest_cur,
+            src_schema_name=src_schema_name,
+            src_table_name=src_table_name,
+            dest_schema_name=dest_schema_name,
+            dest_table_name=dest_table_name,
+        )
 
     src_table = adapter.inspect_table(
         cur=src_cur,
@@ -141,9 +142,8 @@ def compare_rows(
     )
 
 
-def coalesce_pks(
+def get_pks(
     *,
-    pk_cols: typing.Optional[typing.List[str]],
     src_cur: pyodbc.Cursor,
     dest_cur: pyodbc.Cursor,
     src_schema_name: str,
@@ -151,28 +151,25 @@ def coalesce_pks(
     dest_schema_name: str,
     dest_table_name: str,
 ) -> typing.List[str]:
-    if pk_cols is None:
-        src_pks = adapter.get_primary_key_cols_for_table(
-            cur=src_cur,
-            table_name=src_table_name,
-            schema_name=src_schema_name,
-        )
-        if src_pks:
-            return src_pks
-        else:
-            dest_pks = adapter.get_primary_key_cols_for_table(
-                cur=dest_cur,
-                table_name=dest_table_name,
-                schema_name=dest_schema_name,
-            )
-            if dest_pks:
-                return dest_pks
-            else:
-                raise domain.exceptions.MissingPrimaryKey(
-                    schema_name=src_schema_name, table_name=src_table_name
-                )
+    src_pks = adapter.get_primary_key_cols_for_table(
+        cur=src_cur,
+        table_name=src_table_name,
+        schema_name=src_schema_name,
+    )
+    if src_pks:
+        return src_pks
     else:
-        return pk_cols
+        dest_pks = adapter.get_primary_key_cols_for_table(
+            cur=dest_cur,
+            table_name=dest_table_name,
+            schema_name=dest_schema_name,
+        )
+        if dest_pks:
+            return dest_pks
+        else:
+            raise domain.exceptions.MissingPrimaryKey(
+                schema_name=src_schema_name, table_name=src_table_name
+            )
 
 
 def rows_to_examples(
@@ -188,7 +185,3 @@ def rows_to_examples(
         return prefix + ", ".join(str(x) for x in examples)
     else:
         return ""
-
-
-# def get_first_x_pk_values(rows: typing.List[typing.Dict[str, typing.Any]]) -> typing.List[typing.Dict[str, typing.Any]]:
-#     sorted_rows = sorted(rows, key=lambda d: d.values())
