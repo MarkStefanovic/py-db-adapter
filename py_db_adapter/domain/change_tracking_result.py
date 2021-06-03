@@ -1,11 +1,11 @@
 import dataclasses
 
 
-__all__ = ("ChangeTrackingResult",)
-
 import datetime
 
 import typing
+
+__all__ = ("ChangeTrackingResult",)
 
 
 @dataclasses.dataclass(frozen=True, eq=True)

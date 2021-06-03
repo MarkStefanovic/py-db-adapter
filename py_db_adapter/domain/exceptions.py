@@ -1,15 +1,13 @@
 import pathlib
+import traceback
 import typing
 
 __all__ = (
     "PyDbAdapterException",
     "DatabaseIsReadOnly",
-    "ExtraKeyColumns",
-    "FastRowCountFailed",
-    "MissingPrimaryKey",
-    "MissingKeyColumns",
-    "NoCommonKeyColumns",
     "InvalidCustomPrimaryKey",
+    "MissingPrimaryKey",
+    "parse_traceback",
     "TableDoesNotExist",
     "TableMissingPrimaryKey",
     "TableHasNoColumns",
@@ -46,27 +44,6 @@ class DirectoryDoesNotExit(PyDbAdapterException):
         super().__init__(f"The folder, {folder!s}, does not exist.")
 
 
-class ExtraKeyColumns(PyDbAdapterException):
-    def __init__(
-        self, *, actual_key_cols: typing.Set[str], expected_key_cols: typing.Set[str]
-    ):
-        self.actual_key_cols = actual_key_cols
-        self.expected_key_cols = expected_key_cols
-        msg = (
-            f"Extra key columns found.  The following key columns were expected, {', '.join(sorted(actual_key_cols))}, "
-            f"but got {', '.join(sorted(expected_key_cols))}."
-        )
-        super().__init__(msg)
-
-
-class FastRowCountFailed(PyDbAdapterException):
-    def __init__(self, table_name: str, error_message: str):
-        msg = f"fast_row_count() failed for the {table_name} table with the following error message:\n{error_message}"
-        super().__init__(msg)
-
-        self.table_name = table_name
-
-
 class InvalidCustomPrimaryKey(PyDbAdapterException):
     def __init__(self, invalid_column_names: typing.Iterable[str]) -> None:
         msg = (
@@ -81,13 +58,6 @@ class InvalidSqlGenerated(PyDbAdapterException):
     def __init__(self, sql: str, message: str):
         self.sql = sql
         super().__init__(message)
-
-
-class MissingColumns(PyDbAdapterException):
-    def __init__(self, /, missing_cols: typing.Set[str]):
-        self.missing_cols = missing_cols
-        msg = f"The following required columns are missing: {', '.join(sorted(missing_cols))}"
-        super().__init__(msg)
 
 
 class MissingPrimaryKey(PyDbAdapterException):
@@ -109,19 +79,6 @@ class NoCommonKeyColumns(PyDbAdapterException):
         msg = (
             f"There are no common key columns between source and destination:\n\t"
             f"source keys: {sorted(src_key_cols)}\n\tdest keys: {sorted(dest_key_cols)}"
-        )
-        super().__init__(msg)
-
-
-class MissingKeyColumns(PyDbAdapterException):
-    def __init__(
-        self, *, actual_key_cols: typing.Set[str], expected_key_cols: typing.Set[str]
-    ):
-        self.actual_key_cols = actual_key_cols
-        self.expected_key_cols = expected_key_cols
-        msg = (
-            f"Key columns missing.  The following key columns were expected, {', '.join(sorted(actual_key_cols))}, "
-            f"but got {', '.join(sorted(expected_key_cols))}."
         )
         super().__init__(msg)
 
@@ -155,3 +112,7 @@ class TableHasNoColumns(PyDbAdapterException):
         )
         self.schema_name = schema_name
         self.table_name = table_name
+
+
+def parse_traceback(e: Exception, /) -> typing.Tuple[str]:
+    return tuple(str(ln) for ln in traceback.format_exception(None, e, e.__traceback__))
