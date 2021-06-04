@@ -114,5 +114,5 @@ class TableHasNoColumns(PyDbAdapterException):
         self.table_name = table_name
 
 
-def parse_traceback(e: Exception, /) -> typing.Tuple[str]:
+def parse_traceback(e: Exception, /) -> typing.Tuple[str, ...]:
     return tuple(str(ln) for ln in traceback.format_exception(None, e, e.__traceback__))

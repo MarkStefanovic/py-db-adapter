@@ -15,6 +15,7 @@ pylint = "^2.6.0"
 pytest = "^6.2.1"
 python-dotenv = "^0.15.0"
 mypy = "^0.790"
+freezegun = "^1.1.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

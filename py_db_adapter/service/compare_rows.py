@@ -1,7 +1,6 @@
 import dataclasses
 import datetime
 import decimal
-import itertools
 import pathlib
 import typing
 
@@ -15,6 +14,7 @@ __all__ = ("compare_rows",)
 
 def compare_rows(
     # fmt: off
+    *,
     src_cur: pyodbc.Cursor,
     dest_cur: pyodbc.Cursor,
     src_db_adapter: domain.DbAdapter,
