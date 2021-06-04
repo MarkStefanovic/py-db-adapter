@@ -13,6 +13,8 @@ class RowComparisonResult:
     src_table: str
     dest_schema: str
     dest_table: str
+    src_rows: int
+    dest_rows: int
     missing_rows: int
     missing_row_examples: str
     pct_missing: decimal.Decimal
@@ -39,6 +41,8 @@ class RowComparisonResult:
         ts: {self.ts.strftime("%Y-%m-%d %H:%M:%S.%f")}
         src_schema: {self.src_schema}
         src_table: {self.src_table}
+        src_rows: {self.src_rows}
+        dest_rows: {self.dest_rows}
         dest_schema: {self.dest_schema}
         dest_table: {self.dest_table}
         missing_rows: {self.missing_rows}

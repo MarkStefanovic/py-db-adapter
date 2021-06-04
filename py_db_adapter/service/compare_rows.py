@@ -34,6 +34,8 @@ def compare_rows(
         src_table=src_table_name,
         dest_schema=dest_schema_name,
         dest_table=dest_table_name,
+        src_rows=-1,
+        dest_rows=-1,
         missing_rows=0,
         missing_row_examples="",
         pct_missing=decimal.Decimal("0"),
@@ -106,11 +108,15 @@ def compare_rows(
             table=src_table,
             additional_cols=compare_cols,
         )
-
         dest_rows = dest_db_adapter.table_keys(
             cur=dest_cur,
             table=dest_table,
             additional_cols=compare_cols,
+        )
+        result = dataclasses.replace(
+            result,
+            src_rows=src_rows.row_count,
+            dest_rows=dest_rows.row_count,
         )
 
         diff: domain.RowDiff = domain.compare_rows(
