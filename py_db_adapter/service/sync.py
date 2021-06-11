@@ -79,14 +79,24 @@ def sync(
                 include_cols=include_cols,
                 cache_dir=cache_dir,
             )
-            dest_table, _ = copy_table(
-                cur=dest_cur,
+            dest_table, created = copy_table(
+                src_cur=src_cur,
+                dest_cur=dest_cur,
                 dest_db_adapter=dest_db_adapter,
-                src_table=src_table,
+                src_table_name=src_table_name,
+                src_schema_name=src_schema_name,
                 dest_table_name=dest_table_name,
                 dest_schema_name=dest_schema_name,
                 recreate=recreate,
+                include_cols=include_cols,
+                pk_cols=pk_cols,
             )
+            if created:
+                if dest_schema_name:
+                    dest_full_table_name = f"[{dest_schema_name}].[{dest_table_name}]"
+                else:
+                    dest_full_table_name = f"[{dest_table_name}]"
+                logger.info(f"{dest_full_table_name} did not exist, so it was created.")
 
             if pk_cols is None:
                 if src_table.primary_key.columns:
